@@ -34,6 +34,7 @@
     margin:0;
     padding:0;
     height:100%;
+    overflow: hidden; /* 스파클 효과용 요소들이 문서 흐름에 끼어들며 생기는 스크롤바 방지 */
     background: var(--bg);
     color: var(--ink);
     font-family: 'Noto Sans KR', sans-serif;
@@ -609,6 +610,8 @@ function set_width() {
 function createDiv(height, width) {
   var div=document.createElement("div");
   div.style.position="absolute";
+  div.style.top="0px";
+  div.style.left="0px";
   div.style.height=height+"px";
   div.style.width=width+"px";
   div.style.overflow="hidden";
