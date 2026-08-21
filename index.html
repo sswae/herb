@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HERB</title>
+
+<!--
+  ============================================
+  파비콘 (favicon) 삽입 코드
+  ============================================
+  1) 이미지 파일을 쓰고 싶다면 파일을 같은 폴더에 두고 href만 바꾸면 됨:
+     <link rel="icon" type="image/png" href="favicon.png">
+  2) 지금은 파일 없이도 바로 동작하도록 별 모양 이모지를 SVG 데이터로 넣어둠.
+     원하는 이미지가 생기면 아래 한 줄만 교체하면 됨.
+-->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌿</text></svg>">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg: #f4f5f0;
+    --ink: #333;
+    --line: #333;
+    --hover-bg: #f4f5f0;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html, body{
+    margin:0;
+    padding:0;
+    height:100%;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Noto Sans KR', sans-serif;
+
+    /* ============================================
+       커스텀 마우스 커서 삽입 코드
+       ============================================
+       커서 이미지 파일이 생기면 아래처럼 교체:
+       cursor: url('cursor.png') 4 4, auto;
+       지금은 기본 커서를 유지하되, 교체 지점만 남겨둠.
+    */
+    cursor: url('cursor.gif') 4 4, auto;
+  }
+
+  a, button, .link-item, .add-btn{
+    cursor: url('cursor.gif') 4 4, auto; /* 클릭 가능한 요소는 커서 파일 준비되면 url()로 교체 */
+  }
+
+  .app{
+    display:flex;
+    height:100vh;
+    width:100vw;
+  }
+
+  /* ---------- 좌측 사이드바 : 가로 60px 고정 ---------- */
+  .sidebar{
+    width: 60px;
+    min-width: 60px;
+    max-width: 60px;
+    padding: 100px 5px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap: 50px;
+    background: var(--bg);
+    overflow: hidden;
+  }
+
+  .add-btn{
+    width: 16px;
+    height: 16px;
+    flex: none;
+    border: 1px solid var(--ink);
+    color: var(--ink);
+    background: transparent;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    border-radius: 4px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition: background .15s, color .15s;
+  }
+  .add-btn:hover{
+    background: var(--ink);
+    color: #f4f5f0;
+  }
+
+  .site-title{
+    font-family: 'Press Start 2P', monospace; /* 픽셀아트 느낌 폰트 */
+    font-size: 8px;
+    text-decoration: underline;
+    text-underline-offset: 1px;
+    white-space: nowrap;
+  }
+
+  .link-list{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap: 8px;
+    overflow-y:auto;
+    overflow-x:hidden;
+    width:100%;
+    flex:1;
+  }
+
+  .link-item{
+    position: relative;
+    width: 52px;
+    font-family: 'Noto Sans KR', sans-serif; /* 가독성을 위해 Noto Sans 사용 */
+    font-size: 9px;
+  }
+
+  .link-name{
+    display:block;
+    width: 52px; /* 지시서 규격: 링크 표시 부분 가로 60px(사이드바 폭) 내 표시 */
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    padding: 4px 3px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: #fff;
+    text-align: center;
+    transition: background .15s;
+  }
+  .link-name:hover{ background: var(--hover-bg); }
+
+  .link-actions{
+    position: absolute;
+    top: -8px;
+    right: -4px;
+    display:flex;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity .15s;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 1px 2px;
+  }
+  .link-item:hover .link-actions{ opacity: 1; }
+
+  .icon-btn{
+    background:none;
+    border:none;
+    font-size: 10px;
+    padding: 1px 2px;
+    color: var(--ink);
+  }
+  .del-btn{ font-weight:700; }
+
+  .empty-hint{
+    font-size: 9px;
+    color:#888;
+    line-height:1.5;
+    text-align:center;
+    padding-top: 6px;
+  }
+
+  /* ---------- 우측 표시 영역 ---------- */
+  .viewer{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    min-width: 0;
+  }
+
+  .open-new-tab{
+    font-size: 11px;
+    text-decoration: underline;
+    color: var(--ink);
+    display:none;
+  }
+
+  .viewer-body{
+    flex:1;
+    position:relative;
+  }
+
+  .viewer-body iframe{
+    width:100%;
+    height:100%;
+    border:none;
+  }
+
+  .placeholder{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#999;
+    font-size: 14px;
+    text-align:center;
+    padding: 20px;
+  }
+
+  /* ---------- 모달 (링크 추가/수정) ---------- */
+  .modal-overlay{
+    position:fixed;
+    inset:0;
+    background: rgba(0,0,0,.35);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index: 999;
+  }
+  .modal-overlay.open{ display:flex; }
+
+  .modal{
+    background:#fff;
+    border: 2px solid var(--line);
+    border-radius: 6px;
+    width: 320px;
+    padding: 20px;
+    display:flex;
+    flex-direction:column;
+    gap: 12px;
+  }
+
+  .modal h3{
+    margin:0;
+    font-size: 14px;
+  }
+
+  .modal input{
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px;
+  }
+
+  .modal-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .modal-actions button{
+    border: 1px solid var(--line);
+    background:#fff;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .modal-actions .primary{
+    background: var(--ink);
+    color:#fff;
+    border-color: var(--ink);
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <button class="add-btn" id="addBtn" title="링크 추가">+</button>
+    <div class="site-title">HERB</div>
+
+    <div class="link-list" id="linkList">
+      <!-- 링크 항목이 JS로 렌더링됨 -->
+    </div>
+
+  </aside>
+
+  <main class="viewer">
+    <div class="viewer-bar">
+      <a class="open-new-tab" id="openNewTab" target="_blank" rel="noopener">새 탭에서 열기 ↗</a>
+    </div>
+    <div class="viewer-body">
+      <iframe id="viewerFrame" style="display:none;"></iframe>
+    </div>
+  </main>
+</div>
+
+<!-- 링크 추가/수정 모달 -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3 id="modalTitle">링크 추가</h3>
+    <input type="text" id="nameInput" placeholder="링크 이름">
+    <input type="text" id="urlInput" placeholder="링크 주소 (https://...)">
+    <div class="modal-actions">
+      <button id="cancelBtn">취소</button>
+      <button id="saveBtn" class="primary">저장</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+/* ============================================
+   Firebase 초기화 (Firestore, 모듈형 SDK)
+   ------------------------------------------
+   herb-a0db3 프로젝트의 config 값이 반영되어 있습니다.
+   링크 데이터는 'herbLinks' 컬렉션에 저장되며, onSnapshot으로
+   실시간 구독하기 때문에 한 기기에서 추가/수정/삭제하면
+   다른 기기에도 즉시 반영됩니다.
+   ============================================ */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+import {
+  getFirestore, collection, addDoc, doc, updateDoc, deleteDoc,
+  onSnapshot, query, orderBy, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDQ8Yp6GMGXZ9DRjSdHkxom_Jx50ELwApA",
+  authDomain: "herb-a0db3.firebaseapp.com",
+  databaseURL: "https://herb-a0db3-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "herb-a0db3",
+  storageBucket: "herb-a0db3.firebasestorage.app",
+  messagingSenderId: "244376314992",
+  appId: "1:244376314992:web:c12c2be7fa844ccaabc0b5"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const linksCol = collection(db, 'herbLinks');
+
+let links = [];
+let editingId = null;
+
+const linkListEl = document.getElementById('linkList');
+const modalOverlay = document.getElementById('modalOverlay');
+const modalTitle = document.getElementById('modalTitle');
+const nameInput = document.getElementById('nameInput');
+const urlInput = document.getElementById('urlInput');
+const viewerFrame = document.getElementById('viewerFrame');
+const openNewTab = document.getElementById('openNewTab');
+
+function normalizeUrl(url){
+  if(!/^https?:\/\//i.test(url)) return 'https://' + url;
+  return url;
+}
+
+function renderLinks(){
+  linkListEl.innerHTML = '';
+
+  links.forEach(link => {
+    const item = document.createElement('div');
+    item.className = 'link-item';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'link-name';
+    nameSpan.textContent = link.name;
+    nameSpan.title = link.name; // 툴팁: 이름이 길 경우 전체 표시
+    nameSpan.addEventListener('click', () => openLink(link));
+
+    const actions = document.createElement('div');
+    actions.className = 'link-actions';
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'icon-btn edit-btn';
+    editBtn.textContent = '✎';
+    editBtn.title = '수정';
+    editBtn.addEventListener('click', (e) => { e.stopPropagation(); openEditModal(link); });
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'icon-btn del-btn';
+    delBtn.textContent = 'X';
+    delBtn.title = '삭제';
+    delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteLink(link.id); });
+
+    actions.appendChild(editBtn);
+    actions.appendChild(delBtn);
+    item.appendChild(nameSpan);
+    item.appendChild(actions);
+    linkListEl.appendChild(item);
+  });
+}
+
+function openLink(link){
+  const url = normalizeUrl(link.url);
+  viewerFrame.style.display = 'block';
+  viewerFrame.src = url;
+  openNewTab.href = url;
+  openNewTab.style.display = 'inline';
+}
+
+function deleteLink(id){
+  deleteDoc(doc(db, 'herbLinks', id)).catch(err => console.error('삭제 오류:', err));
+  // renderLinks()는 onSnapshot이 변경을 감지하면 자동으로 호출됨
+}
+
+function openAddModal(){
+  editingId = null;
+  modalTitle.textContent = '링크 추가';
+  nameInput.value = '';
+  urlInput.value = '';
+  modalOverlay.classList.add('open');
+  nameInput.focus();
+}
+
+function openEditModal(link){
+  editingId = link.id;
+  modalTitle.textContent = '링크 수정';
+  nameInput.value = link.name;
+  urlInput.value = link.url;
+  modalOverlay.classList.add('open');
+  nameInput.focus();
+}
+
+function closeModal(){
+  modalOverlay.classList.remove('open');
+}
+
+function saveModal(){
+  const name = nameInput.value.trim();
+  const url = urlInput.value.trim();
+  if(!name || !url){
+    alert('링크 이름과 주소를 모두 입력해 주세요.');
+    return;
+  }
+
+  if(editingId){
+    updateDoc(doc(db, 'herbLinks', editingId), { name, url })
+      .catch(err => console.error('수정 오류:', err));
+  }else{
+    addDoc(linksCol, { name, url, createdAt: serverTimestamp() })
+      .catch(err => console.error('추가 오류:', err));
+  }
+
+  // renderLinks()는 onSnapshot이 변경을 감지하면 자동으로 호출됨
+  closeModal();
+}
+
+document.getElementById('addBtn').addEventListener('click', openAddModal);
+document.getElementById('cancelBtn').addEventListener('click', closeModal);
+document.getElementById('saveBtn').addEventListener('click', saveModal);
+modalOverlay.addEventListener('click', (e) => { if(e.target === modalOverlay) closeModal(); });
+
+// Firestore 실시간 구독: 추가/수정/삭제가 일어나면 모든 기기에 자동 반영됨
+onSnapshot(query(linksCol, orderBy('createdAt', 'asc')), (snapshot) => {
+  links = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  renderLinks();
+}, (error) => {
+  console.error('Firestore 구독 오류:', error);
+});
+</script>
+
+<!-- ============================================
+     Blue Mouse Sparkles 효과
+     (c) 2005 mf2fm web-design — http://www.mf2fm.com/rv
+     아래 스크립트는 수정하지 말고 그대로 유지할 것
+     ============================================ -->
+<script type="text/javascript">
+var colour="#ffb5d1";
+var sparkles=120;
+
+var x=ox=400;
+var y=oy=300;
+var swide=800;
+var shigh=600;
+var sleft=sdown=0;
+var tiny=new Array();
+var star=new Array();
+var starv=new Array();
+var starx=new Array();
+var stary=new Array();
+var tinyx=new Array();
+var tinyy=new Array();
+var tinyv=new Array();
+
+window.onload=function() { if (document.getElementById) {
+  var i, rats, rlef, rdow;
+  for (var i=0; i<sparkles; i++) {
+    var rats=createDiv(3, 3);
+    rats.style.visibility="hidden";
+    document.body.appendChild(tiny[i]=rats);
+    starv[i]=0;
+    tinyv[i]=0;
+    var rats=createDiv(5, 5);
+    rats.style.backgroundColor="transparent";
+    rats.style.visibility="hidden";
+    var rlef=createDiv(1, 5);
+    var rdow=createDiv(5, 1);
+    rats.appendChild(rlef);
+    rats.appendChild(rdow);
+    rlef.style.top="2px";
+    rlef.style.left="0px";
+    rdow.style.top="0px";
+    rdow.style.left="2px";
+    document.body.appendChild(star[i]=rats);
+  }
+  set_width();
+  sparkle();
+}}
+
+function sparkle() {
+  var c;
+  if (x!=ox || y!=oy) {
+    ox=x;
+    oy=y;
+    for (c=0; c<sparkles; c++) if (!starv[c]) {
+      star[c].style.left=(starx[c]=x)+"px";
+      star[c].style.top=(stary[c]=y)+"px";
+      star[c].style.clip="rect(0px, 5px, 5px, 0px)";
+      star[c].style.visibility="visible";
+      starv[c]=50;
+      break;
+    }
+  }
+  for (c=0; c<sparkles; c++) {
+    if (starv[c]) update_star(c);
+    if (tinyv[c]) update_tiny(c);
+  }
+  setTimeout("sparkle()", 40);
+}
+
+function update_star(i) {
+  if (--starv[i]==25) star[i].style.clip="rect(1px, 4px, 4px, 1px)";
+  if (starv[i]) {
+    stary[i]+=1+Math.random()*3;
+    if (stary[i]<shigh+sdown) {
+      star[i].style.top=stary[i]+"px";
+      starx[i]+=(i%5-2)/5;
+      star[i].style.left=starx[i]+"px";
+    }
+    else {
+      star[i].style.visibility="hidden";
+      starv[i]=0;
+      return;
+    }
+  }
+  else {
+    tinyv[i]=50;
+    tiny[i].style.top=(tinyy[i]=stary[i])+"px";
+    tiny[i].style.left=(tinyx[i]=starx[i])+"px";
+    tiny[i].style.width="2px";
+    tiny[i].style.height="2px";
+    star[i].style.visibility="hidden";
+    tiny[i].style.visibility="visible"
+  }
+}
+
+function update_tiny(i) {
+  if (--tinyv[i]==25) {
+    tiny[i].style.width="1px";
+    tiny[i].style.height="1px";
+  }
+  if (tinyv[i]) {
+    tinyy[i]+=1+Math.random()*3;
+    if (tinyy[i]<shigh+sdown) {
+      tiny[i].style.top=tinyy[i]+"px";
+      tinyx[i]+=(i%5-2)/5;
+      tiny[i].style.left=tinyx[i]+"px";
+    }
+    else {
+      tiny[i].style.visibility="hidden";
+      tinyv[i]=0;
+      return;
+    }
+  }
+  else tiny[i].style.visibility="hidden";
+}
+
+document.onmousemove=mouse;
+function mouse(e) {
+  set_scroll();
+  y=(e)?e.pageY:event.y+sdown;
+  x=(e)?e.pageX:event.x+sleft;
+}
+
+function set_scroll() {
+  if (typeof(self.pageYOffset)=="number") {
+    sdown=self.pageYOffset;
+    sleft=self.pageXOffset;
+  }
+  else if (document.body.scrollTop || document.body.scrollLeft) {
+    sdown=document.body.scrollTop;
+    sleft=document.body.scrollLeft;
+  }
+  else if (document.documentElement && (document.documentElement.scrollTop || document.documentElement.scrollLeft)) {
+    sleft=document.documentElement.scrollLeft;
+	sdown=document.documentElement.scrollTop;
+  }
+  else {
+    sdown=0;
+    sleft=0;
+  }
+}
+
+window.onresize=set_width;
+function set_width() {
+  if (typeof(self.innerWidth)=="number") {
+    swide=self.innerWidth;
+    shigh=self.innerHeight;
+  }
+  else if (document.documentElement && document.documentElement.clientWidth) {
+    swide=document.documentElement.clientWidth;
+    shigh=document.documentElement.clientHeight;
+  }
+  else if (document.body.clientWidth) {
+    swide=document.body.clientWidth;
+    shigh=document.body.clientHeight;
+  }
+}
+
+function createDiv(height, width) {
+  var div=document.createElement("div");
+  div.style.position="absolute";
+  div.style.height=height+"px";
+  div.style.width=width+"px";
+  div.style.overflow="hidden";
+  div.style.backgroundColor=colour;
+  return (div);
+}
+</script>
+
+</body>
+</html>
