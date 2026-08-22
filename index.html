@@ -406,7 +406,7 @@ function deleteLink(id, name){
 
 function openAddModal(){
   editingId = null;
-  modalTitle.textContent = '링크 추가';
+  modalTitle.textContent = 'add link';
   nameInput.value = '';
   urlInput.value = '';
   modalOverlay.classList.add('open');
@@ -415,7 +415,7 @@ function openAddModal(){
 
 function openEditModal(link){
   editingId = link.id;
-  modalTitle.textContent = '링크 수정';
+  modalTitle.textContent = 'edit link';
   nameInput.value = link.name;
   urlInput.value = link.url;
   modalOverlay.classList.add('open');
