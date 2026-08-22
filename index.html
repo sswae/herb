@@ -264,6 +264,151 @@
     color:#fff;
     border-color: var(--ink);
   }
+
+  /* ---------- 타자 연습기 (대기 화면) ---------- */
+  .typing-practice{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    padding: 28px 40px;
+    gap: 18px;
+    overflow:auto;
+  }
+
+  .typing-toolbar{
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+    gap: 16px;
+  }
+
+  .typing-toolbar button{
+    background:none;
+    border:none;
+    color: var(--ink);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 12px;
+    text-underline-offset: 2px;
+    padding: 4px 2px;
+  }
+  .typing-toolbar button:hover{ opacity:.6; }
+
+  .typing-stage{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    max-width: 720px;
+  }
+
+  .typing-display{
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 22px;
+    line-height: 1.9;
+    letter-spacing: .2px;
+    white-space: pre-wrap;
+    word-break: keep-all;
+  }
+
+  .typing-display .ch{ color:#b9b6ac; transition: color .1s; }
+  .typing-display .ch.correct{ color: var(--ink); }
+  .typing-display .ch.incorrect{ color:#c0392b; background: rgba(192,57,43,.12); border-radius:2px; }
+  .typing-display .ch.punct{ color:#8f8c82; }
+  .typing-display .ch.current{ border-bottom: 2px solid var(--ink); }
+
+  .typing-input-shadow{
+    position:absolute;
+    opacity:0;
+    width:1px;
+    height:1px;
+    border:none;
+    outline:none;
+    padding:0;
+    pointer-events:none;
+  }
+
+  .typing-meta{
+    font-size: 11px;
+    color:#8f8c82;
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+
+  .typing-result-overlay{
+    position:fixed;
+    inset:0;
+    background: rgba(0,0,0,.4);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index: 999;
+  }
+  .typing-result-overlay.open{ display:flex; }
+
+  .typing-result{
+    display:flex;
+    flex-direction:column;
+    gap: 8px;
+    width: 190px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .typing-result h3{ margin:0 0 2px; font-size:13px; }
+  .typing-result .stat-row{ display:flex; justify-content:space-between; font-size:12px; }
+  .typing-result .stat-row b{ font-size:13px; }
+  .typing-result button{
+    align-self:flex-start;
+    border: 1px solid var(--line);
+    background: var(--ink);
+    color:#fff;
+    border-radius:4px;
+    padding: 5px 12px;
+    font-size:12px;
+    margin-top: 4px;
+  }
+
+  /* ---------- 타자 연습 문장 관리 모달 ---------- */
+  .typing-list{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    max-height: 200px;
+    overflow-y:auto;
+  }
+  .typing-list-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    border:1px solid #ccc;
+    border-radius:4px;
+    padding:6px 8px;
+    font-size:12px;
+  }
+  .typing-list-item span{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .typing-list-item button{
+    border:none;
+    background:none;
+    color: var(--ink);
+    font-weight:700;
+    font-size:12px;
+  }
+  .modal textarea{
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px;
+    resize: vertical;
+    min-height: 70px;
+  }
 </style>
 </head>
 <body>
@@ -284,9 +429,31 @@
       <a class="open-new-tab" id="openNewTab" target="_blank" rel="noopener">🔑new tap</a>
     </div>
     <div class="viewer-body">
+      <div class="typing-practice" id="typingPractice">
+        <div class="typing-toolbar">
+          <button id="typingAddBtn" title="문장 추가">📝new sentence</button>
+          <button id="typingListBtn" title="문장 목록">📋list</button>
+          <button id="typingNextBtn" title="다음 문장">🔀shuffle</button>
+        </div>
+        <div class="typing-stage">
+          <div class="typing-display" id="typingDisplay"></div>
+          <div class="typing-meta" id="typingMeta"></div>
+          <input type="text" class="typing-input-shadow" id="typingInput" autocomplete="off" autocapitalize="off" spellcheck="false">
+        </div>
+      </div>
       <iframe id="viewerFrame" style="display:none;"></iframe>
     </div>
   </main>
+</div>
+
+<!-- 타자 연습 결과 모달 -->
+<div class="typing-result-overlay" id="typingResultOverlay">
+  <div class="typing-result">
+    <h3>🎯result</h3>
+    <div class="stat-row"><span>✅accuracy</span><b id="resultAccuracy">-</b></div>
+    <div class="stat-row"><span>⚡speed</span><b id="resultSpeed">-</b></div>
+    <button id="typingRetryBtn">🔁retry</button>
+  </div>
 </div>
 
 <!-- 링크 추가/수정 모달 -->
@@ -299,6 +466,19 @@
       <button id="cancelBtn">❌</button>
       <button id="saveBtn" class="primary">✅</button>
     </div>
+  </div>
+</div>
+
+<!-- 타자 연습 문장 관리 모달 -->
+<div class="modal-overlay" id="typingModalOverlay">
+  <div class="modal">
+    <h3>📋sentence list</h3>
+    <textarea id="typingTextArea" placeholder="새 연습 문장을 입력하세요. (문장부호는 자동 처리, 줄바꿈은 그대로 반영됩니다)"></textarea>
+    <div class="modal-actions">
+      <button id="typingCancelBtn">❌</button>
+      <button id="typingSaveBtn" class="primary">✅</button>
+    </div>
+    <div class="typing-list" id="typingListEl"></div>
   </div>
 </div>
 
@@ -342,6 +522,7 @@ const urlInput = document.getElementById('urlInput');
 const viewerFrame = document.getElementById('viewerFrame');
 const openNewTab = document.getElementById('openNewTab');
 const siteTitle = document.getElementById('siteTitle');
+const typingPractice = document.getElementById('typingPractice');
 
 function normalizeUrl(url){
   if(!/^https?:\/\//i.test(url)) return 'https://' + url;
@@ -386,6 +567,7 @@ function renderLinks(){
 
 function openLink(link){
   const url = normalizeUrl(link.url);
+  typingPractice.style.display = 'none';
   viewerFrame.style.display = 'block';
   viewerFrame.src = url;
   openNewTab.href = url;
@@ -396,6 +578,7 @@ function goToStart(){
   viewerFrame.src = 'about:blank'; // 로딩 중이던 페이지 리소스도 정리
   viewerFrame.style.display = 'none';
   openNewTab.style.display = 'none';
+  typingPractice.style.display = 'flex';
 }
 
 function deleteLink(id, name){
@@ -406,7 +589,7 @@ function deleteLink(id, name){
 
 function openAddModal(){
   editingId = null;
-  modalTitle.textContent = 'add link';
+  modalTitle.textContent = '링크 추가';
   nameInput.value = '';
   urlInput.value = '';
   modalOverlay.classList.add('open');
@@ -415,7 +598,7 @@ function openAddModal(){
 
 function openEditModal(link){
   editingId = link.id;
-  modalTitle.textContent = 'edit link';
+  modalTitle.textContent = '링크 수정';
   nameInput.value = link.name;
   urlInput.value = link.url;
   modalOverlay.classList.add('open');
@@ -459,6 +642,228 @@ onSnapshot(query(linksCol, orderBy('createdAt', 'asc')), (snapshot) => {
 }, (error) => {
   console.error('Firestore 구독 오류:', error);
 });
+
+/* ============================================
+   타자 연습기 (대기 화면)
+   ------------------------------------------
+   - 문장 목록: localStorage(herb_typing_texts)에 저장
+   - 문장부호(. , " ' ! ? 등)는 사용자가 입력하지 않고 자동으로 통과됨
+   - Enter와 Space는 동일하게 취급되어, 목표 문장이 띄어쓰기든
+     줄바꿈이든 상관없이 둘 중 아무 키나 누르면 진행됨
+   - 실시간으로 정답/오타를 색으로 표시하고, 끝나면 정확도/속도를 보여줌
+   ============================================ */
+const TYPING_KEY = 'herb_typing_texts';
+const DEFAULT_TYPING_TEXTS = [
+  '오늘 할 일을 내일로 미루지 않는 하루가 되기를 바랍니다.',
+  '작은 습관이 쌓이면 큰 변화를 만듭니다.',
+  '느리더라도 멈추지 않는 것이 중요합니다.'
+];
+// 사용자가 직접 입력하지 않아도 자동으로 통과되는 문장부호 집합
+const PUNCT_REGEX = /[.,!?"'“”‘’·~\-–—()\[\]{}:;]/;
+
+function loadTypingTexts(){
+  try{
+    const raw = localStorage.getItem(TYPING_KEY);
+    const arr = raw ? JSON.parse(raw) : null;
+    if(arr && arr.length) return arr;
+  }catch(e){ /* 무시하고 기본값 사용 */ }
+  localStorage.setItem(TYPING_KEY, JSON.stringify(DEFAULT_TYPING_TEXTS));
+  return DEFAULT_TYPING_TEXTS.slice();
+}
+
+function saveTypingTexts(arr){
+  localStorage.setItem(TYPING_KEY, JSON.stringify(arr));
+}
+
+let typingTexts = loadTypingTexts();
+let typingIndex = 0;
+let targetChars = [];      // 원문 전체를 한 글자씩 담은 배열 (문장부호 포함)
+let requiredTarget = '';   // 사용자가 실제로 입력해야 하는 부분(문장부호 제외, 공백/줄바꿈은 ' '로 정규화)
+let charMeta = [];         // targetChars와 같은 길이. { requiredIndex: n | null }
+let startTime = null;
+let finished = false;
+
+const typingDisplay = document.getElementById('typingDisplay');
+const typingMeta = document.getElementById('typingMeta');
+const typingInput = document.getElementById('typingInput');
+const typingResultOverlay = document.getElementById('typingResultOverlay');
+const resultAccuracy = document.getElementById('resultAccuracy');
+const resultSpeed = document.getElementById('resultSpeed');
+const typingModalOverlay = document.getElementById('typingModalOverlay');
+const typingTextArea = document.getElementById('typingTextArea');
+const typingListEl = document.getElementById('typingListEl');
+
+function buildTarget(text){
+  targetChars = Array.from(text);
+  charMeta = [];
+  let required = '';
+  targetChars.forEach(ch => {
+    if(PUNCT_REGEX.test(ch)){
+      charMeta.push({ requiredIndex: null }); // 자동 통과, 사용자 입력 불필요
+    }else if(ch === ' ' || ch === '\n'){
+      charMeta.push({ requiredIndex: required.length });
+      required += ' '; // 스페이스/엔터 둘 다 이 위치와 매칭됨
+    }else{
+      charMeta.push({ requiredIndex: required.length });
+      required += ch;
+    }
+  });
+  requiredTarget = required;
+}
+
+function renderTypingDisplay(){
+  const typedLen = typingInput.value.length;
+  typingDisplay.innerHTML = '';
+  targetChars.forEach((ch, i) => {
+    const meta = charMeta[i];
+    const span = document.createElement('span');
+    span.className = 'ch';
+    span.textContent = ch === '\n' ? '\n' : ch;
+
+    if(meta.requiredIndex === null){
+      span.classList.add('punct'); // 문장부호: 항상 자동 처리
+    }else if(meta.requiredIndex < typedLen){
+      const typedCh = typingInput.value[meta.requiredIndex];
+      const expectedCh = requiredTarget[meta.requiredIndex];
+      span.classList.add(typedCh === expectedCh ? 'correct' : 'incorrect');
+    }else if(meta.requiredIndex === typedLen){
+      span.classList.add('current');
+    }
+    typingDisplay.appendChild(span);
+  });
+}
+
+function pickRandomIndex(excludeIndex){
+  if(typingTexts.length <= 1) return 0;
+  let idx;
+  do{ idx = Math.floor(Math.random() * typingTexts.length); } while(idx === excludeIndex);
+  return idx;
+}
+
+function loadTypingText(index){
+  finished = false;
+  startTime = null;
+  typingIndex = ((index % typingTexts.length) + typingTexts.length) % typingTexts.length;
+  buildTarget(typingTexts[typingIndex]);
+  typingInput.value = '';
+  typingResultOverlay.classList.remove('open');
+  typingMeta.textContent = `${typingIndex + 1} / ${typingTexts.length}`;
+  renderTypingDisplay();
+}
+
+function finishTyping(){
+  finished = true;
+  const elapsedMs = Date.now() - startTime;
+  const minutes = Math.max(elapsedMs / 60000, 1/60);
+
+  let correctCount = 0;
+  for(let i = 0; i < requiredTarget.length; i++){
+    if(typingInput.value[i] === requiredTarget[i]) correctCount++;
+  }
+  const accuracy = Math.round((correctCount / requiredTarget.length) * 100);
+  const speed = Math.round(requiredTarget.length / minutes);
+
+  resultAccuracy.textContent = accuracy + '%';
+  resultSpeed.textContent = speed + ' 타/분';
+  typingResultOverlay.classList.add('open');
+}
+
+typingInput.addEventListener('input', () => {
+  if(finished) return;
+  if(startTime === null && typingInput.value.length > 0) startTime = Date.now();
+
+  // 입력값이 목표 길이를 넘지 않도록 방지(문장부호 등 잘못 들어온 글자 정리)
+  if(typingInput.value.length > requiredTarget.length){
+    typingInput.value = typingInput.value.slice(0, requiredTarget.length);
+  }
+
+  renderTypingDisplay();
+
+  if(typingInput.value.length === requiredTarget.length && requiredTarget.length > 0){
+    finishTyping();
+  }
+});
+
+typingInput.addEventListener('keydown', (e) => {
+  // Enter를 Space와 동일하게 취급: 기본 동작(제출/줄바꿈 없음) 대신 공백 삽입
+  if(e.key === 'Enter'){
+    e.preventDefault();
+    if(finished) return;
+    const start = typingInput.selectionStart, end = typingInput.selectionEnd;
+    typingInput.setRangeText(' ', start, end, 'end');
+    typingInput.dispatchEvent(new Event('input', { bubbles:true }));
+    return;
+  }
+  // 문장부호는 사용자가 직접 입력하지 않아도 되므로, 그런 키 입력은 막음
+  if(e.key.length === 1 && PUNCT_REGEX.test(e.key)){
+    e.preventDefault();
+  }
+});
+
+typingDisplay.addEventListener('click', () => typingInput.focus());
+typingPractice.addEventListener('click', (e) => {
+  if(e.target === typingPractice || e.target.closest('.typing-stage')) typingInput.focus();
+});
+
+document.getElementById('typingNextBtn').addEventListener('click', () => loadTypingText(pickRandomIndex(typingIndex)));
+document.getElementById('typingRetryBtn').addEventListener('click', () => loadTypingText(typingIndex));
+
+function renderTypingList(){
+  typingListEl.innerHTML = '';
+  typingTexts.forEach((text, i) => {
+    const row = document.createElement('div');
+    row.className = 'typing-list-item';
+
+    const span = document.createElement('span');
+    span.textContent = text;
+    span.title = text;
+
+    const delBtn = document.createElement('button');
+    delBtn.textContent = 'X';
+    delBtn.title = '삭제';
+    delBtn.addEventListener('click', () => {
+      if(typingTexts.length <= 1){
+        alert('최소 한 개의 문장은 남아있어야 합니다.');
+        return;
+      }
+      if(!confirm('이 문장을 삭제할까요?')) return;
+      typingTexts.splice(i, 1);
+      saveTypingTexts(typingTexts);
+      renderTypingList();
+      if(typingIndex >= typingTexts.length) typingIndex = 0;
+      loadTypingText(typingIndex);
+    });
+
+    row.appendChild(span);
+    row.appendChild(delBtn);
+    typingListEl.appendChild(row);
+  });
+}
+
+function openTypingModal(){
+  typingTextArea.value = '';
+  renderTypingList();
+  typingModalOverlay.classList.add('open');
+}
+function closeTypingModal(){
+  typingModalOverlay.classList.remove('open');
+}
+
+document.getElementById('typingAddBtn').addEventListener('click', openTypingModal);
+document.getElementById('typingListBtn').addEventListener('click', openTypingModal);
+document.getElementById('typingCancelBtn').addEventListener('click', closeTypingModal);
+document.getElementById('typingSaveBtn').addEventListener('click', () => {
+  const text = typingTextArea.value.trim();
+  if(!text){ alert('문장을 입력해 주세요.'); return; }
+  typingTexts.push(text);
+  saveTypingTexts(typingTexts);
+  typingTextArea.value = '';
+  renderTypingList();
+  loadTypingText(typingTexts.length - 1);
+});
+typingModalOverlay.addEventListener('click', (e) => { if(e.target === typingModalOverlay) closeTypingModal(); });
+
+loadTypingText(pickRandomIndex(-1)); // 첫 문장도 랜덤 선택
 </script>
 
 <!-- ============================================
