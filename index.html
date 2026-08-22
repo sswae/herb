@@ -431,9 +431,9 @@
     <div class="viewer-body">
       <div class="typing-practice" id="typingPractice">
         <div class="typing-toolbar">
-          <button id="typingAddBtn" title="문장 추가">📝new sentence</button>
-          <button id="typingListBtn" title="문장 목록">📋list</button>
-          <button id="typingNextBtn" title="다음 문장">🔀shuffle</button>
+          <button id="typingAddBtn">📝new sentence</button>
+          <button id="typingListBtn">📋list</button>
+          <button id="typingNextBtn">🔀shuffle</button>
         </div>
         <div class="typing-stage">
           <div class="typing-display" id="typingDisplay"></div>
@@ -473,7 +473,7 @@
 <div class="modal-overlay" id="typingModalOverlay">
   <div class="modal">
     <h3>📋sentence list</h3>
-    <textarea id="typingTextArea" placeholder="새 연습 문장을 입력하세요. (문장부호는 자동 처리, 줄바꿈은 그대로 반영됩니다)"></textarea>
+    <textarea id="typingTextArea" placeholder="(문장부호는 자동 처리, 줄바꿈은 그대로 반영됩니다)"></textarea>
     <div class="modal-actions">
       <button id="typingCancelBtn">❌</button>
       <button id="typingSaveBtn" class="primary">✅</button>
@@ -613,7 +613,7 @@ function saveModal(){
   const name = nameInput.value.trim();
   const url = urlInput.value.trim();
   if(!name || !url){
-    alert('링크 이름과 주소를 모두 입력해 주세요.');
+    alert('⚠️링크 이름과 주소를 모두 입력해 주세요.');
     return;
   }
 
@@ -823,7 +823,7 @@ function renderTypingList(){
     delBtn.title = '삭제';
     delBtn.addEventListener('click', () => {
       if(typingTexts.length <= 1){
-        alert('최소 한 개의 문장은 남아있어야 합니다.');
+        alert('⚠️최소 한 개의 문장은 남아있어야 합니다.');
         return;
       }
       if(!confirm('🧨이 문장을 삭제할까요?')) return;
@@ -854,7 +854,7 @@ document.getElementById('typingListBtn').addEventListener('click', openTypingMod
 document.getElementById('typingCancelBtn').addEventListener('click', closeTypingModal);
 document.getElementById('typingSaveBtn').addEventListener('click', () => {
   const text = typingTextArea.value.trim();
-  if(!text){ alert('문장을 입력해 주세요.'); return; }
+  if(!text){ alert('✏️문장을 입력해 주세요.'); return; }
   typingTexts.push(text);
   saveTypingTexts(typingTexts);
   typingTextArea.value = '';
