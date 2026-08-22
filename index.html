@@ -100,7 +100,7 @@
     text-decoration: underline;
     text-underline-offset: 1px;
     white-space: nowrap;
-    cursor: pointer; /* 클릭 시 시작 화면으로 복귀 */
+    cursor: url('cursor.gif') 4 4, pointer; /* 클릭 시 시작 화면으로 복귀 - 커스텀 커서 유지 */
   }
   .site-title:hover{ opacity: 0.6; }
 
@@ -270,8 +270,8 @@
 
 <div class="app">
   <aside class="sidebar">
-    <button class="add-btn" id="addBtn" title="링크 추가">+</button>
-    <div class="site-title" id="siteTitle" title="시작 화면으로">🍀HERB</div>
+    <button class="add-btn" id="addBtn">+</button>
+    <div class="site-title" id="siteTitle">🍀HERB</div>
 
     <div class="link-list" id="linkList">
       <!-- 링크 항목이 JS로 렌더링됨 -->
@@ -281,7 +281,7 @@
 
   <main class="viewer">
     <div class="viewer-bar">
-      <a class="open-new-tab" id="openNewTab" target="_blank" rel="noopener">새 탭에서 열기 ↗</a>
+      <a class="open-new-tab" id="openNewTab" target="_blank" rel="noopener">🔑new tap</a>
     </div>
     <div class="viewer-body">
       <iframe id="viewerFrame" style="display:none;"></iframe>
@@ -292,12 +292,12 @@
 <!-- 링크 추가/수정 모달 -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
-    <h3 id="modalTitle">링크 추가</h3>
-    <input type="text" id="nameInput" placeholder="링크 이름">
-    <input type="text" id="urlInput" placeholder="링크 주소 (https://...)">
+    <h3 id="modalTitle">💡new link</h3>
+    <input type="text" id="nameInput" placeholder="title">
+    <input type="text" id="urlInput" placeholder="addres (https://...)">
     <div class="modal-actions">
-      <button id="cancelBtn">취소</button>
-      <button id="saveBtn" class="primary">저장</button>
+      <button id="cancelBtn">❌</button>
+      <button id="saveBtn" class="primary">✅</button>
     </div>
   </div>
 </div>
@@ -374,7 +374,7 @@ function renderLinks(){
     delBtn.className = 'icon-btn del-btn';
     delBtn.textContent = 'X';
     delBtn.title = '삭제';
-    delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteLink(link.id); });
+    delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteLink(link.id, link.name); });
 
     actions.appendChild(editBtn);
     actions.appendChild(delBtn);
@@ -398,7 +398,8 @@ function goToStart(){
   openNewTab.style.display = 'none';
 }
 
-function deleteLink(id){
+function deleteLink(id, name){
+  if(!confirm(`'${name}' 🧨링크를 정말 삭제하시겠습니까?`)) return;
   deleteDoc(doc(db, 'herbLinks', id)).catch(err => console.error('삭제 오류:', err));
   // renderLinks()는 onSnapshot이 변경을 감지하면 자동으로 호출됨
 }
