@@ -409,6 +409,11 @@
     resize: vertical;
     min-height: 70px;
   }
+  .typing-modal-section{
+    display:flex;
+    flex-direction:column;
+    gap: 12px;
+  }
 </style>
 </head>
 <body>
@@ -469,16 +474,25 @@
   </div>
 </div>
 
-<!-- 타자 연습 문장 관리 모달 -->
+<!-- 타자 연습 문장 관리 모달: new text 버튼과 list 버튼이 서로 다른 화면을 보여줌 -->
 <div class="modal-overlay" id="typingModalOverlay">
   <div class="modal">
-    <h3>📋text list</h3>
-    <textarea id="typingTextArea" rows="6" placeholder="저작권 무료 단편 소설 등, 긴 글을 통째로 붙여넣어도 됩니다. 약 300자 단위로 자동으로 잘라서 순서대로 연습하게 해줍니다. (문장부호는 자동 처리, 줄바꿈은 그대로 반영됩니다)"></textarea>
-    <div class="modal-actions">
-      <button id="typingCancelBtn">❌</button>
-      <button id="typingSaveBtn" class="primary">✅</button>
+    <h3 id="typingModalTitle">📝new text</h3>
+
+    <div class="typing-modal-section" id="typingAddSection">
+      <textarea id="typingTextArea" rows="6" placeholder="저작권 무료 단편 소설 등, 긴 글을 통째로 붙여넣어도 됩니다. 약 300자 단위로 자동으로 잘라서 순서대로 연습하게 해줍니다. (문장부호·한자·영어·일본어는 자동 처리, 줄바꿈은 그대로 반영됩니다)"></textarea>
+      <div class="modal-actions">
+        <button id="typingCancelBtn">❌</button>
+        <button id="typingSaveBtn" class="primary">✅</button>
+      </div>
     </div>
-    <div class="typing-list" id="typingListEl"></div>
+
+    <div class="typing-modal-section" id="typingListSection" style="display:none;">
+      <div class="typing-list" id="typingListEl"></div>
+      <div class="modal-actions">
+        <button id="typingListCloseBtn">❌</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -651,15 +665,17 @@ onSnapshot(query(linksCol, orderBy('createdAt', 'asc')), (snapshot) => {
    - 저작권 무료 단편 소설 등 긴 글을 통째로 붙여넣어 등록할 수 있고,
      화면에는 약 300자 단위(TYPING_CHUNK_SIZE)로 잘려서 순서대로 표시됩니다.
      한 글의 마지막 조각까지 다 입력하면 자동으로 다른 글로 넘어갑니다.
-   - 문장부호(. , " ' ! ? 등)는 사용자가 입력하지 않고 자동으로 통과됨
+   - 문장부호(. , " ' ! ? 등) 및 한자, 영어, 일본어(히라가나/가타카나)는
+     사용자가 입력하지 않고 자동으로 통과됨 (한글 타이핑 연습이 목적이므로)
    - Enter와 Space는 동일하게 취급되어, 목표 글이 띄어쓰기든
      줄바꿈이든 상관없이 둘 중 아무 키나 누르면 진행됨
    - 실시간으로 정답/오타를 색으로 표시하고, 끝나면 정확도/속도를 보여줌
    ============================================ */
 const typingTextsCol = collection(db, 'herbTypingTexts');
 const TYPING_CHUNK_SIZE = 300; // 한 화면에 보여줄 대략적인 글자 수
-// 사용자가 직접 입력하지 않아도 자동으로 통과되는 문장부호 집합
-const PUNCT_REGEX = /[.,!?"'“”‘’·~\-–—()\[\]{}:;]/;
+// 사용자가 직접 입력하지 않아도 자동으로 통과되는 문자 집합:
+// 문장부호 + 한자(漢字) + 일본어(히라가나/가타카나) + 영어 알파벳
+const AUTO_PASS_REGEX = /[.,!?"'“”‘’·~\-–—()\[\]{}:;a-zA-Z\u4E00-\u9FFF\u3005\u3040-\u309F\u30A0-\u30FF\uFF66-\uFF9F]/;
 
 let typingWorks = [];              // Firestore 구독 결과: [{ id, content }] (글 전체 목록)
 let workIndex = 0;                 // 현재 연습 중인 글의 인덱스
@@ -732,7 +748,7 @@ function buildTarget(text){
   let required = '';
   let prevWasPunct = false;
   targetChars.forEach(ch => {
-    if(PUNCT_REGEX.test(ch)){
+    if(AUTO_PASS_REGEX.test(ch)){
       charMeta.push({ requiredIndex: null }); // 자동 통과, 사용자 입력 불필요
       prevWasPunct = true;
     }else if(ch === ' ' || ch === '\n'){
@@ -896,8 +912,8 @@ typingInput.addEventListener('keydown', (e) => {
     typingInput.dispatchEvent(new Event('input', { bubbles:true }));
     return;
   }
-  // 문장부호는 사용자가 직접 입력하지 않아도 되므로, 그런 키 입력은 막음
-  if(e.key.length === 1 && PUNCT_REGEX.test(e.key)){
+  // 문장부호·한자·영어·일본어는 사용자가 직접 입력하지 않아도 되므로, 그런 키 입력은 막음
+  if(e.key.length === 1 && AUTO_PASS_REGEX.test(e.key)){
     e.preventDefault();
   }
 });
@@ -941,18 +957,32 @@ function renderTypingList(){
   });
 }
 
-function openTypingModal(){
-  typingTextArea.value = '';
-  renderTypingList();
+function openTypingModal(mode){
+  const addSection = document.getElementById('typingAddSection');
+  const listSection = document.getElementById('typingListSection');
+  const title = document.getElementById('typingModalTitle');
+
+  if(mode === 'list'){
+    title.textContent = '📋text list';
+    addSection.style.display = 'none';
+    listSection.style.display = 'flex';
+    renderTypingList();
+  }else{
+    title.textContent = '📝new text';
+    typingTextArea.value = '';
+    addSection.style.display = 'flex';
+    listSection.style.display = 'none';
+  }
   typingModalOverlay.classList.add('open');
 }
 function closeTypingModal(){
   typingModalOverlay.classList.remove('open');
 }
 
-document.getElementById('typingAddBtn').addEventListener('click', openTypingModal);
-document.getElementById('typingListBtn').addEventListener('click', openTypingModal);
+document.getElementById('typingAddBtn').addEventListener('click', () => openTypingModal('add'));
+document.getElementById('typingListBtn').addEventListener('click', () => openTypingModal('list'));
 document.getElementById('typingCancelBtn').addEventListener('click', closeTypingModal);
+document.getElementById('typingListCloseBtn').addEventListener('click', closeTypingModal);
 document.getElementById('typingSaveBtn').addEventListener('click', () => {
   const text = typingTextArea.value.trim();
   if(!text){ alert('글을 입력해 주세요.'); return; }
@@ -969,7 +999,8 @@ onSnapshot(query(typingTextsCol, orderBy('createdAt', 'asc')), (snapshot) => {
   const prevCurrentId = typingWorks[workIndex] ? typingWorks[workIndex].id : null;
   typingWorks = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-  if(typingModalOverlay.classList.contains('open')) renderTypingList();
+  const listSection = document.getElementById('typingListSection');
+  if(typingModalOverlay.classList.contains('open') && listSection.style.display !== 'none') renderTypingList();
 
   if(typingWorks.length === 0){
     renderEmptyState();
