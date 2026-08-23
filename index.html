@@ -681,6 +681,9 @@ let targetChars = [];      // 원문 전체를 한 글자씩 담은 배열 (문�
 let requiredTarget = '';   // 사용자가 실제로 입력해야 하는 부분(문장부호 제외, 공백/줄바꿈은 ' '로 정규화)
 let charMeta = [];         // targetChars와 같은 길이. { requiredIndex: n | null }
 let startTime = null;
+let lastKeyTime = null;
+let activeMs = 0;
+const PAUSE_THRESHOLD_MS = 2000; // 이보다 오래 멈추면 그 구간은 속도 계산에서 제외
 let finished = false;
 
 const typingDisplay = document.getElementById('typingDisplay');
@@ -732,7 +735,12 @@ function renderTypingDisplay(){
     }else if(meta.requiredIndex < typedLen){
       const typedCh = typingInput.value[meta.requiredIndex];
       const expectedCh = requiredTarget[meta.requiredIndex];
-      span.classList.add(typedCh === expectedCh ? 'correct' : 'incorrect');
+      const isCorrect = typedCh === expectedCh;
+      span.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if(!isCorrect){
+        // 오타일 때는 정답 글자 대신 사용자가 실제로 입력한 글자를 보여줌
+        span.textContent = typedCh === ' ' ? '␣' : typedCh;
+      }
     }else if(meta.requiredIndex === typedLen){
       span.classList.add('current');
     }
@@ -750,6 +758,8 @@ function pickRandomIndex(excludeIndex){
 function loadTypingText(index){
   finished = false;
   startTime = null;
+  lastKeyTime = null;
+  activeMs = 0;
   typingIndex = ((index % typingTexts.length) + typingTexts.length) % typingTexts.length;
   buildTarget(typingTexts[typingIndex]);
   typingInput.value = '';
@@ -760,8 +770,7 @@ function loadTypingText(index){
 
 function finishTyping(){
   finished = true;
-  const elapsedMs = Date.now() - startTime;
-  const minutes = Math.max(elapsedMs / 60000, 1/60);
+  const minutes = Math.max(activeMs / 60000, 1/60);
 
   let correctCount = 0;
   for(let i = 0; i < requiredTarget.length; i++){
@@ -777,7 +786,15 @@ function finishTyping(){
 
 typingInput.addEventListener('input', () => {
   if(finished) return;
-  if(startTime === null && typingInput.value.length > 0) startTime = Date.now();
+  const now = Date.now();
+  if(startTime === null && typingInput.value.length > 0){
+    startTime = now;
+    lastKeyTime = now; // 첫 입력 시점부터 활동 시간 계산 시작
+  }else if(lastKeyTime !== null){
+    const delta = now - lastKeyTime;
+    if(delta < PAUSE_THRESHOLD_MS) activeMs += delta; // 멈춰있던 구간(2초 이상)은 제외하고 누적
+    lastKeyTime = now;
+  }
 
   // 입력값이 목표 길이를 넘지 않도록 방지(문장부호 등 잘못 들어온 글자 정리)
   if(typingInput.value.length > requiredTarget.length){
