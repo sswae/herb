@@ -1752,7 +1752,7 @@
     const el = document.getElementById('tl-items');
     el.innerHTML = '<div class="state-msg" style="padding-left:28px">…</div>';
     try {
-      const snap = await getDocs(collection(db, 'sed_timelines', tlName, 'items'));
+      const snap = await getDocs(collection(db, 'sed_timelines', tlName, 'sed_items'));
       const items = snap.docs
         .map(d => ({ id: d.id, ...d.data() }))
         .sort((a, b) => tlSortKey(b) - tlSortKey(a));
@@ -1878,7 +1878,7 @@
       // 1) 모든 items 삭제
       const itemsSnap = await getDocs(collection(db, 'sed_timelines', tlName, 'sed_items'));
       for (const d of itemsSnap.docs) {
-        await deleteDoc(doc(db, 'sed_sed_timelines', tlName, 'sed_sed_items', d.id));
+        await deleteDoc(doc(db, 'sed_timelines', tlName, 'sed_items', d.id));
       }
       // 2) timeline-names 에서 제거
       await deleteDoc(doc(db, 'sed_timeline-names', tlName));
@@ -1905,7 +1905,7 @@
   async function deleteTlItem(itemId, tlName) {
     if (!confirm('이 항목을 삭제할까요?')) return;
     try {
-      await deleteDoc(doc(db, 'sed_timelines', tlName, 'items', itemId));
+      await deleteDoc(doc(db, 'sed_timelines', tlName, 'sed_items', itemId));
       renderTlItems(tlName);
     } catch(e) { alert('삭제 실패: ' + e.message); }
   }
