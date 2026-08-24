@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>B-Tool Board</title>
+
+<!-- Firebase compat SDK (via cdnjs) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.17.1/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.17.1/firebase-firestore-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.17.1/firebase-storage-compat.min.js"></script>
+
+<style>
+  :root{
+    --desktop-a:#6f6f8c;
+    --desktop-b:#83839f;
+    --win-bg:#d6d6d6;
+    --win-bg-light:#e8e8e8;
+    --win-border:#333333;
+    --line-hi:#f4f4f4;
+    --line-lo:#a8a8a8;
+    --sunken:#c4c4c4;
+    --text:#2b2b2b;
+    --text-soft:#5b5b5b;
+    --navy-a:#26356e;
+    --navy-b:#3a5aa8;
+    --btn-face:#e2e2e2;
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{
+    margin:0;
+    padding:0;
+    height:100%;
+    overflow:hidden; /* rule 4: outer/desktop never scrolls */
+    background: radial-gradient(ellipse at 50% 25%, var(--desktop-b), var(--desktop-a));
+    font-family: "Geneva","Tahoma","Verdana",sans-serif;
+    color:var(--text);
+  }
+
+  /* ---------- classic chunky scrollbar ---------- */
+  .scrollable{ overflow-y:auto; }
+  .scrollable::-webkit-scrollbar{ width:15px; }
+  .scrollable::-webkit-scrollbar-track{ background:var(--sunken); border-left:1px solid var(--line-lo); }
+  .scrollable::-webkit-scrollbar-thumb{
+    background:var(--btn-face);
+    border:1px solid var(--win-border);
+    box-shadow: inset 1px 1px 0 var(--line-hi), inset -1px -1px 0 var(--line-lo);
+  }
+  .scrollable::-webkit-scrollbar-button{ display:none; }
+
+  .desktop-wrap{
+    height:100%;
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:18px;
+  }
+
+  /* ---------- main window ---------- */
+  .window{
+    width:100%;
+    max-width:640px;
+    height:100%;
+    max-height:820px;
+    background:var(--win-bg);
+    border:2px solid var(--win-border);
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.35), inset 1px 1px 0 var(--line-hi);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+
+  .titlebar{
+    position:relative;
+    height:30px;
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-bottom:2px solid var(--win-border);
+    background:repeating-linear-gradient(180deg, var(--line-hi) 0px, var(--line-hi) 2px, #bcbcbc 2px, #bcbcbc 4px);
+  }
+  .titlebar .box{
+    position:absolute;
+    top:7px;
+    width:15px;
+    height:15px;
+    background:var(--btn-face);
+    border:1px solid var(--win-border);
+  }
+  .titlebar .box.close{ left:8px; }
+  .titlebar .title{
+    background:var(--win-bg);
+    padding:0 10px;
+    font-family:Georgia,"Times New Roman",serif;
+    font-style:italic;
+    font-weight:700;
+    font-size:19px;
+    letter-spacing:0.3px;
+  }
+
+  .content{
+    flex:1 1 auto;
+    min-height:0;
+    padding:12px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    overflow-y:auto;
+  }
+  .content::-webkit-scrollbar{ width:15px; }
+  .content::-webkit-scrollbar-track{ background:var(--sunken); }
+  .content::-webkit-scrollbar-thumb{
+    background:var(--btn-face); border:1px solid var(--win-border);
+    box-shadow: inset 1px 1px 0 var(--line-hi), inset -1px -1px 0 var(--line-lo);
+  }
+
+  .setup-notice{
+    border:1px solid var(--win-border);
+    background:#efe6b8;
+    padding:8px 10px;
+    font-size:12px;
+    line-height:1.5;
+    color:#4a3c00;
+  }
+  .setup-notice b{ display:block; margin-bottom:2px; font-size:12.5px; }
+
+  /* ---------- generic bevel panel (raised) ---------- */
+  .panel{
+    border:1px solid var(--win-border);
+    box-shadow: inset 1px 1px 0 var(--line-hi), inset -1px -1px 0 var(--line-lo);
+    background:var(--win-bg-light);
+    padding:8px;
+  }
+  /* sunken variant */
+  .panel.sunken{
+    box-shadow: inset -1px -1px 0 var(--line-hi), inset 1px 1px 0 var(--line-lo);
+    background:var(--sunken);
+  }
+
+  .section-label{
+    font-size:11px;
+    color:var(--text-soft);
+    margin:0 0 4px 2px;
+    text-transform:none;
+  }
+
+  /* ---------- banners ---------- */
+  .banner-head{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    margin-bottom:4px;
+  }
+  .banner-box{
+    min-height:70px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    align-content:flex-start;
+  }
+  .banner-thumb{
+    /* 88x31, 200x40 등 배너 원본 사이즈를 그대로 유지 (강제 고정 X) */
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    max-width:200px;
+    max-height:100px;
+    cursor:pointer;
+    flex:0 0 auto;
+    overflow:hidden;
+    line-height:0;
+  }
+  .banner-thumb img{ display:block; width:auto; height:auto; max-width:200px; max-height:40px; }
+  .banner-empty{ font-size:11px; color:var(--text-soft); padding:6px 2px; }
+
+  .btn{
+    font-family:inherit;
+    font-size:12px;
+    padding:4px 10px;
+    background:var(--btn-face);
+    border:1px solid var(--win-border);
+    box-shadow: inset 1px 1px 0 var(--line-hi), inset -1px -1px 0 var(--line-lo);
+    cursor:pointer;
+    color:var(--text);
+  }
+  .btn:active{
+    box-shadow: inset -1px -1px 0 var(--line-hi), inset 1px 1px 0 var(--line-lo);
+  }
+  .btn:disabled{ color:#999; cursor:default; }
+  .btn.small{ padding:3px 8px; font-size:11px; }
+
+  /* ---------- upload row ---------- */
+  .upload-row{ display:flex; gap:8px; align-items:stretch; }
+  .fake-field{
+    flex:1 1 auto;
+    background:#fff;
+    border:1px solid var(--win-border);
+    box-shadow: inset 1px 1px 0 #999;
+    font-size:12px;
+    padding:6px 8px;
+    display:flex;
+    align-items:center;
+    color:var(--text-soft);
+    cursor:pointer;
+    overflow:hidden;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+  }
+  .fake-field.has-file{ color:var(--text); }
+  input[type=file]{ display:none; }
+
+  .mature-row{
+    display:flex;
+    align-items:flex-start;
+    gap:6px;
+    font-size:11px;
+    color:var(--text-soft);
+    padding:0 2px;
+  }
+  .mature-row input{ margin-top:2px; }
+  .mature-row label b{ color:var(--text); font-weight:600; display:block; font-size:12px; }
+
+  /* ---------- new update sub-window ---------- */
+  .subwin{
+    border:1px solid var(--win-border);
+    box-shadow: inset 1px 1px 0 var(--line-hi), inset -1px -1px 0 var(--line-lo);
+    display:flex;
+    flex-direction:column;
+    flex:1 1 auto;
+    min-height:300px;
+  }
+  .subwin-bar{
+    flex:0 0 auto;
+    background:linear-gradient(180deg, var(--navy-b), var(--navy-a));
+    color:#eee;
+    font-size:12px;
+    font-weight:700;
+    padding:5px 8px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    border-bottom:1px solid var(--win-border);
+  }
+  .subwin-body{
+    flex:1 1 auto;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+
+  /* 최신 이미지 영역과 그 외 이미지 영역을 완전히 분리 */
+  .feature-wrap{
+    flex:0 0 auto;
+    background:var(--sunken);
+    padding:10px;
+    border-bottom:2px solid var(--win-border);
+  }
+  .grid-wrap{
+    flex:1 1 auto;
+    min-height:0;
+    background:var(--win-bg-light);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+
+  .feature-slot{
+    height:220px;
+    background:#b7b7b7;
+    border:1px solid var(--win-border);
+    box-shadow: inset 1px 1px 0 #999;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    overflow:hidden;
+    cursor:pointer;
+  }
+  .feature-slot img{
+    width:100%; height:100%; object-fit:cover; display:block;
+  }
+  .feature-slot .empty-msg{ font-size:12px; color:var(--text-soft); }
+  .mature-flag{ filter: blur(22px); transform:scale(1.05); }
+  .mature-overlay{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(0,0,0,0.35);
+    color:#fff; font-size:12px; text-align:center; padding:10px;
+  }
+
+  .thumb-grid{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(90px,1fr));
+    gap:8px;
+    padding:10px;
+  }
+  .thumb-grid::-webkit-scrollbar{ width:15px; }
+  .thumb-grid::-webkit-scrollbar-track{ background:var(--sunken); }
+  .thumb-grid::-webkit-scrollbar-thumb{
+    background:var(--btn-face); border:1px solid var(--win-border);
+    box-shadow: inset 1px 1px 0 var(--line-hi), inset -1px -1px 0 var(--line-lo);
+  }
+  .thumb{
+    aspect-ratio:1/1;
+    background:#b7b7b7;
+    border:1px solid var(--win-border);
+    box-shadow: inset 1px 1px 0 #999;
+    position:relative;
+    overflow:hidden;
+    cursor:pointer;
+  }
+  .thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .thumb .mature-overlay{ font-size:10px; padding:4px; }
+  .empty-grid-msg{ font-size:11px; color:var(--text-soft); padding:6px 4px; grid-column:1/-1; }
+
+  /* ---------- context menu ---------- */
+  .ctx-menu{
+    position:fixed;
+    z-index:500;
+    background:var(--win-bg-light);
+    border:1px solid var(--win-border);
+    box-shadow:2px 2px 0 rgba(0,0,0,0.4);
+    min-width:150px;
+    display:none;
+    font-size:12px;
+  }
+  .ctx-menu button{
+    display:block;
+    width:100%;
+    text-align:left;
+    padding:6px 10px;
+    background:none;
+    border:none;
+    font:inherit;
+    color:var(--text);
+    cursor:pointer;
+  }
+  .ctx-menu button:hover{ background:var(--navy-a); color:#fff; }
+  .ctx-menu .sep{ height:1px; background:var(--line-lo); margin:2px 0; }
+
+  /* ---------- modal viewer ---------- */
+  .modal-backdrop{
+    position:fixed; inset:0;
+    background:rgba(20,20,30,0.75);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:600;
+    padding:24px;
+  }
+  .modal-win{
+    background:var(--win-bg);
+    border:2px solid var(--win-border);
+    box-shadow:4px 4px 0 rgba(0,0,0,0.4);
+    max-width:92vw;
+    max-height:92vh;
+    display:flex;
+    flex-direction:column;
+  }
+  .modal-bar{
+    height:26px;
+    background:repeating-linear-gradient(180deg, var(--line-hi) 0px, var(--line-hi) 2px, #bcbcbc 2px, #bcbcbc 4px);
+    border-bottom:2px solid var(--win-border);
+    display:flex; align-items:center; justify-content:flex-end;
+    padding:0 6px;
+  }
+  .modal-bar .box{ width:14px; height:14px; background:var(--btn-face); border:1px solid var(--win-border); cursor:pointer; }
+  .modal-body{ padding:10px; overflow:auto; display:flex; align-items:center; justify-content:center; }
+  .modal-body img{ max-width:80vw; max-height:78vh; display:block; }
+
+  /* ---------- confirm dialog ---------- */
+  .confirm-backdrop{
+    position:fixed; inset:0; background:rgba(0,0,0,0.3);
+    display:none; align-items:center; justify-content:center; z-index:700;
+  }
+  .confirm-box{
+    width:280px;
+    background:var(--win-bg);
+    border:2px solid var(--win-border);
+    box-shadow:3px 3px 0 rgba(0,0,0,0.4);
+  }
+  .confirm-bar{
+    height:22px;
+    background:repeating-linear-gradient(180deg, var(--line-hi) 0px, var(--line-hi) 2px, #bcbcbc 2px, #bcbcbc 4px);
+    border-bottom:2px solid var(--win-border);
+  }
+  .confirm-msg{ padding:14px; font-size:12.5px; line-height:1.5; }
+  .confirm-actions{ display:flex; gap:8px; justify-content:flex-end; padding:0 14px 14px; }
+
+  /* ---------- mini modal (banner add) ---------- */
+  .mini-modal-backdrop{
+    position:fixed; inset:0; background:rgba(0,0,0,0.35);
+    display:none; align-items:center; justify-content:center; z-index:650; padding:20px;
+  }
+  .mini-modal{
+    width:280px;
+    background:var(--win-bg);
+    border:2px solid var(--win-border);
+    box-shadow:3px 3px 0 rgba(0,0,0,0.4);
+  }
+  .mini-modal-bar{
+    height:26px;
+    background:repeating-linear-gradient(180deg, var(--line-hi) 0px, var(--line-hi) 2px, #bcbcbc 2px, #bcbcbc 4px);
+    border-bottom:2px solid var(--win-border);
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 6px;
+  }
+  .mini-modal-bar .mini-title{ font-size:12px; font-weight:700; }
+  .mini-modal-bar .box{ width:14px; height:14px; background:var(--btn-face); border:1px solid var(--win-border); cursor:pointer; }
+  .mini-modal-body{ padding:14px; display:flex; flex-direction:column; gap:10px; }
+  .mini-preview{
+    height:70px;
+    background:var(--sunken);
+    border:1px solid var(--win-border);
+    box-shadow: inset 1px 1px 0 #999;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+  }
+  .mini-preview img{ max-width:100%; max-height:100%; object-fit:contain; }
+  .mini-preview span{ font-size:11px; color:var(--text-soft); }
+
+  .toast{
+    position:fixed;
+    bottom:16px; left:50%; transform:translateX(-50%);
+    background:#222; color:#eee; font-size:12px;
+    padding:7px 14px; border:1px solid #555;
+    z-index:800; display:none;
+  }
+
+  /* ---------- cursor sparkle trail ---------- */
+  #sparkleLayer{
+    position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:950;
+  }
+  .sparkle{
+    position:absolute;
+    background:#f3f4f5;
+    border-radius:50%;
+    box-shadow:0 0 4px 1px #f3f4f5, 0 0 9px 2px rgba(255,255,255,0.65);
+    transform:translate(-50%,-50%) scale(1);
+    opacity:0.95;
+    transition: transform 0.75s ease-out, opacity 3s ease-out;
+    pointer-events:none;
+  }
+
+  @media (max-width:520px){
+    .desktop-wrap{ padding:0; }
+    .window{ max-width:100%; max-height:100%; border-width:0 0 0 0; border:0; }
+    .feature-slot{ height:170px; }
+    .titlebar .title{ font-size:16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="desktop-wrap">
+  <div class="window">
+    <div class="titlebar">
+      <div class="box close" id="closeBox"></div>
+      <div class="title">B-Tool Board</div>
+    </div>
+
+    <div class="content">
+
+      <div class="setup-notice" id="setupNotice" style="display:none;">
+        <b>⚠ Firebase 설정이 필요합니다</b>
+        코드 상단의 <code>firebaseConfig</code> 값을 본인의 Firebase 프로젝트 설정으로 교체한 뒤,
+        Firestore와 Storage를 활성화하고 보안 규칙을 설정해주세요. 설정 전까지 업로드는 동작하지 않습니다.
+      </div>
+
+      <!-- banners -->
+      <div class="panel sunken">
+        <div class="banner-head">
+          <button class="btn small" id="bannerAddBtn">🙂</button>
+        </div>
+        <div class="banner-box" id="bannerBox">
+        </div>
+      </div>
+
+      <!-- upload -->
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <div class="upload-row">
+          <label class="fake-field" id="fakeField" for="imgInput">Select File</label>
+          <input type="file" id="imgInput" accept="image/*">
+          <button class="btn" id="submitBtn" disabled>Submit</button>
+        </div>
+        <div class="mature-row">
+          <input type="checkbox" id="matureCheck">
+          <label for="matureCheck">
+            <b>Mature Content</b>
+          </label>
+        </div>
+      </div>
+
+      <!-- new update -->
+      <div class="subwin">
+        <div class="subwin-bar">🧨 New Update</div>
+        <div class="subwin-body">
+          <div class="feature-wrap">
+            <div class="feature-slot" id="featureSlot">
+              <div class="empty-msg">No image</div>
+            </div>
+          </div>
+          <div class="grid-wrap">
+            <div class="thumb-grid" id="thumbGrid">
+              <div class="empty-grid-msg">No image</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="ctx-menu" id="ctxMenu"></div>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal-win">
+    <div class="modal-bar"><div class="box" id="modalClose"></div></div>
+    <div class="modal-body"><img id="modalImg" src="" alt=""></div>
+  </div>
+</div>
+
+<div class="confirm-backdrop" id="confirmBackdrop">
+  <div class="confirm-box">
+    <div class="confirm-bar"></div>
+    <div class="confirm-msg" id="confirmMsg">⚠️Are you sure you want to delete?</div>
+    <div class="confirm-actions">
+      <button class="btn small" id="confirmNo">❌No</button>
+      <button class="btn small" id="confirmYes">✅Yes</button>
+    </div>
+  </div>
+</div>
+
+<div class="mini-modal-backdrop" id="bannerModalBackdrop">
+  <div class="mini-modal">
+    <div class="mini-modal-bar">
+      <span class="mini-title">+ Add</span>
+      <div class="box" id="bannerModalClose"></div>
+    </div>
+    <div class="mini-modal-body">
+      <div class="mini-preview" id="bannerPreview"><span>No image</span></div>
+      <label class="fake-field" id="bannerFakeField" for="bannerModalInput">Select File</label>
+      <input type="file" id="bannerModalInput" accept="image/*">
+      <button class="btn" id="bannerModalSubmit" disabled>+ Add</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   Firebase 설정 -- 반드시 본인 프로젝트 값으로 교체하세요.
+   Firebase 콘솔 > 프로젝트 설정 > 일반 탭에서 확인 가능합니다.
+   ========================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyDQ8Yp6GMGXZ9DRjSdHkxom_Jx50ELwApA",
+  authDomain: "herb-a0db3.firebaseapp.com",
+  databaseURL: "https://herb-a0db3-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "herb-a0db3",
+  storageBucket: "herb-a0db3.firebasestorage.app",
+  messagingSenderId: "244376314992",
+  appId: "1:244376314992:web:c12c2be7fa844ccaabc0b5"
+};
+
+/* 기존 프로젝트의 다른 앱들과 섞이지 않도록 이 앱 전용 경로/컬렉션 접두어를 사용 */
+const STORAGE_ROOT = "btool";
+const COL_POSTS = "btool_posts";
+const COL_BANNERS = "btool_banners";
+
+const isConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY";
+
+let db = null, storage = null;
+
+if (isConfigured) {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+  storage = firebase.storage();
+  /* Firestore 자체 로컬 캐시(IndexedDB) 활성화.
+     같은 문서를 다시 열람할 때 서버 재조회(읽기) 대신 로컬 캐시를 우선 사용해서
+     읽기 횟수를 줄여준다. 탭이 여러 개 열려 있으면 한 탭만 캐시를 점유할 수 있는데,
+     그 경우는 조용히 무시하고 기존 방식(서버 조회)으로 동작한다. */
+  db.enablePersistence({ synchronizeTabs: true }).catch(() => { /* 다중 탭 등으로 실패 시 무시 */ });
+} else {
+  document.getElementById('setupNotice').style.display = 'block';
+}
+
+/* ---------------- state ---------------- */
+let posts = [];    // {id, url, path, mature, createdAt}
+let banners = [];  // {id, url, path, createdAt}
+let selectedFile = null;
+let revealedIds = new Set(); // mature items the user has clicked to reveal this session
+
+/* ---------------- helpers ---------------- */
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>{ t.style.display = 'none'; }, 2200);
+}
+
+function fileToWebpBlob(file, maxDim=1600, quality=0.85){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        const scale = Math.min(maxDim/width, maxDim/height);
+        width = Math.round(width*scale);
+        height = Math.round(height*scale);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(url);
+        if (blob) resolve(blob); else reject(new Error('webp 변환 실패'));
+      }, 'image/webp', quality);
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+/* 캔버스로 다시 그려 webp로 인코딩하면 첫 프레임만 남아 애니메이션이 멈춘다.
+   움직이는 GIF(및 애니메이션일 수 있는 WEBP)는 변환하지 않고 원본 그대로 업로드해서
+   애니메이션을 보존한다. 그 외 정지 이미지만 webp로 변환/압축한다. */
+function extForMime(mime){
+  if (mime === 'image/gif') return 'gif';
+  if (mime === 'image/webp') return 'webp';
+  return 'webp';
+}
+
+async function prepareImageBlob(file, maxDim=1600, quality=0.85){
+  if (file.type === 'image/gif' || file.type === 'image/webp') {
+    return { blob: file, contentType: file.type, ext: extForMime(file.type) };
+  }
+  const blob = await fileToWebpBlob(file, maxDim, quality);
+  return { blob, contentType: 'image/webp', ext: 'webp' };
+}
+
+async function uploadToFolder(blob, subfolder, contentType='image/webp', ext='webp'){
+  const filename = `${Date.now()}_${Math.random().toString(36).slice(2,8)}.${ext}`;
+  const path = `${STORAGE_ROOT}/${subfolder}/${filename}`;
+  const ref = storage.ref().child(path);
+  await ref.put(blob, { contentType });
+  const url = await ref.getDownloadURL();
+  return { url, path };
+}
+
+async function deleteFromStorage(path){
+  try { await storage.ref().child(path).delete(); } catch(e) { /* ignore if already gone */ }
+}
+
+/* ---------------- rendering ---------------- */
+function renderBanners(){
+  const box = document.getElementById('bannerBox');
+  box.innerHTML = '';
+  if (!banners.length){
+    box.innerHTML = '<div class="banner-empty">No image</div>';
+    return;
+  }
+  banners.forEach(b => {
+    const el = document.createElement('div');
+    el.className = 'banner-thumb';
+    el.innerHTML = `<img src="${b.url}" alt="banner" loading="lazy">`;
+    el.addEventListener('contextmenu', (e) => openCtxMenu(e, b, 'banner'));
+    el.addEventListener('click', () => openModal(b.url));
+    box.appendChild(el);
+  });
+}
+
+function renderFeature(){
+  const slot = document.getElementById('featureSlot');
+  slot.innerHTML = '';
+  if (!posts.length){
+    slot.innerHTML = '<div class="empty-msg">No image</div>';
+    return;
+  }
+  const top = posts[0];
+  const isBlurred = top.mature && !revealedIds.has(top.id);
+  const img = document.createElement('img');
+  img.src = top.url;
+  img.loading = 'lazy';
+  if (isBlurred) img.className = 'mature-flag';
+  slot.appendChild(img);
+  if (isBlurred){
+    const overlay = document.createElement('div');
+    overlay.className = 'mature-overlay';
+    overlay.textContent = '🔥';
+    slot.appendChild(overlay);
+  }
+  slot.onclick = () => {
+    if (top.mature && !revealedIds.has(top.id)){
+      revealedIds.add(top.id);
+      renderFeature();
+    } else {
+      openModal(top.url);
+    }
+  };
+  slot.oncontextmenu = (e) => openCtxMenu(e, top, 'post');
+}
+
+function renderThumbs(){
+  const grid = document.getElementById('thumbGrid');
+  grid.innerHTML = '';
+  const rest = posts.slice(1);
+  if (!rest.length){
+    grid.innerHTML = '<div class="empty-grid-msg">No image</div>';
+    return;
+  }
+  rest.forEach(p => {
+    const isBlurred = p.mature && !revealedIds.has(p.id);
+    const cell = document.createElement('div');
+    cell.className = 'thumb';
+    const img = document.createElement('img');
+    img.src = p.url;
+    img.loading = 'lazy';
+    if (isBlurred) img.className = 'mature-flag';
+    cell.appendChild(img);
+    if (isBlurred){
+      const overlay = document.createElement('div');
+      overlay.className = 'mature-overlay';
+      overlay.textContent = '🔥';
+      cell.appendChild(overlay);
+    }
+    cell.addEventListener('click', () => {
+      if (p.mature && !revealedIds.has(p.id)){
+        revealedIds.add(p.id);
+        renderThumbs();
+      } else {
+        openModal(p.url);
+      }
+    });
+    cell.addEventListener('contextmenu', (e) => openCtxMenu(e, p, 'post'));
+    grid.appendChild(cell);
+  });
+}
+
+function renderAll(){ renderBanners(); renderFeature(); renderThumbs(); }
+
+/* ---------------- localStorage 화면 캐시 (즉시 렌더용) ----------------
+   Firestore 응답을 기다리지 않고, 지난 방문 때 저장해둔 목록을 먼저 그려서
+   빈 화면이 보이는 시간을 없앤다. 실제 최신 데이터는 뒤이어 onSnapshot이 갱신한다. */
+const CACHE_KEY_POSTS = 'btool_cache_posts_v1';
+const CACHE_KEY_BANNERS = 'btool_cache_banners_v1';
+
+function loadCachedState(){
+  try{
+    const cp = localStorage.getItem(CACHE_KEY_POSTS);
+    const cb = localStorage.getItem(CACHE_KEY_BANNERS);
+    if (cp) posts = JSON.parse(cp);
+    if (cb) banners = JSON.parse(cb);
+    if (cp || cb) renderAll();
+  } catch(e){ /* 캐시가 손상됐으면 무시하고 서버 응답만 사용 */ }
+}
+
+function saveCache(key, data){
+  try{ localStorage.setItem(key, JSON.stringify(data)); } catch(e){ /* 저장 공간 부족 등은 무시 */ }
+}
+
+/* ---------------- firestore live sync ---------------- */
+if (isConfigured){
+  loadCachedState();
+
+  db.collection(COL_POSTS).orderBy('createdAt','desc').onSnapshot(snap => {
+    posts = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    saveCache(CACHE_KEY_POSTS, posts);
+    renderFeature(); renderThumbs();
+  }, err => { console.error(err); toast('게시물 로딩 오류'); });
+
+  db.collection(COL_BANNERS).orderBy('createdAt','asc').onSnapshot(snap => {
+    banners = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    saveCache(CACHE_KEY_BANNERS, banners);
+    renderBanners();
+  }, err => { console.error(err); toast('배너 로딩 오류'); });
+} else {
+  renderAll();
+}
+
+/* ---------------- upload: gallery image ---------------- */
+const imgInput = document.getElementById('imgInput');
+const fakeField = document.getElementById('fakeField');
+const submitBtn = document.getElementById('submitBtn');
+
+imgInput.addEventListener('change', () => {
+  selectedFile = imgInput.files[0] || null;
+  fakeField.textContent = selectedFile ? selectedFile.name : '이미지 삽입 창';
+  fakeField.classList.toggle('has-file', !!selectedFile);
+  submitBtn.disabled = !selectedFile || !isConfigured;
+});
+
+submitBtn.addEventListener('click', async () => {
+  if (!selectedFile || !isConfigured) return;
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Uploading...🍆💦';
+  try{
+    const { blob, contentType, ext } = await prepareImageBlob(selectedFile);
+    const { url, path } = await uploadToFolder(blob, 'gallery', contentType, ext);
+    await db.collection(COL_POSTS).add({
+      url, path,
+      mature: document.getElementById('matureCheck').checked,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    selectedFile = null;
+    imgInput.value = '';
+    fakeField.textContent = '이미지 삽입 창';
+    fakeField.classList.remove('has-file');
+    document.getElementById('matureCheck').checked = false;
+    toast('업로드 완료');
+  } catch(e){
+    console.error(e);
+    toast('업로드 실패: ' + e.message);
+  } finally {
+    submitBtn.textContent = 'Submit';
+    submitBtn.disabled = true;
+  }
+});
+
+/* ---------------- upload: banner (모달) ---------------- */
+const bannerModalBackdrop = document.getElementById('bannerModalBackdrop');
+const bannerModalInput = document.getElementById('bannerModalInput');
+const bannerFakeField = document.getElementById('bannerFakeField');
+const bannerPreview = document.getElementById('bannerPreview');
+const bannerModalSubmit = document.getElementById('bannerModalSubmit');
+let bannerSelectedFile = null;
+
+function openBannerModal(){
+  if (!isConfigured){ toast('Firebase 설정이 필요합니다'); return; }
+  bannerModalBackdrop.style.display = 'flex';
+}
+function closeBannerModal(){
+  bannerModalBackdrop.style.display = 'none';
+  bannerSelectedFile = null;
+  bannerModalInput.value = '';
+  bannerFakeField.textContent = 'Select File';
+  bannerFakeField.classList.remove('has-file');
+  bannerPreview.innerHTML = '<span>No image</span>';
+  bannerModalSubmit.disabled = true;
+}
+
+document.getElementById('bannerAddBtn').addEventListener('click', openBannerModal);
+document.getElementById('bannerModalClose').addEventListener('click', closeBannerModal);
+bannerModalBackdrop.addEventListener('click', (e) => { if (e.target === bannerModalBackdrop) closeBannerModal(); });
+
+bannerModalInput.addEventListener('change', () => {
+  const file = bannerModalInput.files[0];
+  bannerSelectedFile = file || null;
+  bannerFakeField.textContent = file ? file.name : 'Select File';
+  bannerFakeField.classList.toggle('has-file', !!file);
+  bannerModalSubmit.disabled = !file;
+  bannerPreview.innerHTML = '';
+  if (file){
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(file);
+    bannerPreview.appendChild(img);
+  } else {
+    bannerPreview.innerHTML = '<span>No image</span>';
+  }
+});
+
+bannerModalSubmit.addEventListener('click', async () => {
+  if (!bannerSelectedFile) return;
+  bannerModalSubmit.disabled = true;
+  bannerModalSubmit.textContent = 'Uploading...🍆💦';
+  try{
+    const { blob, contentType, ext } = await prepareImageBlob(bannerSelectedFile, 400, 0.85);
+    const { url, path } = await uploadToFolder(blob, 'banners', contentType, ext);
+    await db.collection(COL_BANNERS).add({
+      url, path,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    toast('배너 추가 완료');
+    closeBannerModal();
+  } catch(e){
+    console.error(e);
+    toast('배너 업로드 실패: ' + e.message);
+  } finally {
+    bannerModalSubmit.textContent = '추가';
+  }
+});
+
+/* ---------------- context menu (edit / mature toggle / delete) ---------------- */
+const ctxMenu = document.getElementById('ctxMenu');
+let ctxTarget = null;
+let ctxReplaceInput = null;
+
+function closeCtxMenu(){ ctxMenu.style.display = 'none'; ctxTarget = null; }
+
+function openCtxMenu(e, item, type){
+  e.preventDefault();
+  if (!isConfigured){ toast('Firebase 설정이 필요합니다'); return; }
+  ctxTarget = { item, type };
+  const matureLabel = type === 'post'
+    ? (item.mature ? '🔐' : '🔞')
+    : null;
+
+  ctxMenu.innerHTML = `
+    <button data-act="replace">edit</button>
+    ${type === 'post' ? `<button data-act="mature">${matureLabel}</button>` : ''}
+    <div class="sep"></div>
+    <button data-act="delete">❌</button>
+  `;
+  ctxMenu.style.left = Math.min(e.clientX, window.innerWidth - 170) + 'px';
+  ctxMenu.style.top = Math.min(e.clientY, window.innerHeight - 120) + 'px';
+  ctxMenu.style.display = 'block';
+}
+
+document.addEventListener('click', (e) => {
+  if (!ctxMenu.contains(e.target)) closeCtxMenu();
+});
+
+ctxMenu.addEventListener('click', async (e) => {
+  const act = e.target.dataset.act;
+  if (!act || !ctxTarget) return;
+  const { item, type } = ctxTarget;
+  closeCtxMenu();
+
+  if (act === 'mature'){
+    await db.collection(COL_POSTS).doc(item.id).update({ mature: !item.mature });
+    return;
+  }
+
+  if (act === 'delete'){
+    showConfirm(
+      type === 'post' ? '⚠️Are you sure you want to delete this image?' : '⚠️Are you sure you want to delete this banner?',
+      async () => {
+        const col = type === 'post' ? COL_POSTS : COL_BANNERS;
+        await deleteFromStorage(item.path);
+        await db.collection(col).doc(item.id).delete();
+        toast('✅Completed');
+      }
+    );
+    return;
+  }
+
+  if (act === 'replace'){
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+    input.addEventListener('change', async () => {
+      const file = input.files[0];
+      document.body.removeChild(input);
+      if (!file) return;
+      toast('Replacing image...🍆💦');
+      try{
+        const subfolder = type === 'post' ? 'gallery' : 'banners';
+        const maxDim = type === 'post' ? 1600 : 400;
+        const { blob, contentType, ext } = await prepareImageBlob(file, maxDim, 0.85);
+        const { url, path } = await uploadToFolder(blob, subfolder, contentType, ext);
+        await deleteFromStorage(item.path);
+        const col = type === 'post' ? COL_POSTS : COL_BANNERS;
+        await db.collection(col).doc(item.id).update({ url, path });
+        toast('✅Completed');
+      } catch(err){
+        console.error(err);
+        toast('🧨Fail: ' + err.message);
+      }
+    });
+    input.click();
+  }
+});
+
+/* ---------------- modal viewer ---------------- */
+const modalBackdrop = document.getElementById('modalBackdrop');
+const modalImg = document.getElementById('modalImg');
+function openModal(url){
+  modalImg.src = url;
+  modalBackdrop.style.display = 'flex';
+}
+function closeModal(){
+  modalBackdrop.style.display = 'none';
+  modalImg.src = '';
+}
+document.getElementById('modalClose').addEventListener('click', closeModal);
+modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal(); });
+
+/* ---------------- confirm dialog ---------------- */
+const confirmBackdrop = document.getElementById('confirmBackdrop');
+const confirmMsg = document.getElementById('confirmMsg');
+let confirmCb = null;
+function showConfirm(msg, cb){
+  confirmMsg.textContent = msg;
+  confirmCb = cb;
+  confirmBackdrop.style.display = 'flex';
+}
+document.getElementById('confirmNo').addEventListener('click', () => {
+  confirmBackdrop.style.display = 'none'; confirmCb = null;
+});
+document.getElementById('confirmYes').addEventListener('click', async () => {
+  confirmBackdrop.style.display = 'none';
+  if (confirmCb) await confirmCb();
+  confirmCb = null;
+});
+
+renderAll();
+
+/* ---------------- 마우스를 따라다니는 별빛 효과 ---------------- */
+const sparkleLayer = document.createElement('div');
+sparkleLayer.id = 'sparkleLayer';
+document.body.appendChild(sparkleLayer);
+
+let lastSparkleAt = 0;
+function spawnSparkle(x, y){
+  const s = document.createElement('div');
+  s.className = 'sparkle';
+  const size = 2 + Math.random() * 3;
+  s.style.width = size + 'px';
+  s.style.height = size + 'px';
+  s.style.left = x + 'px';
+  s.style.top = y + 'px';
+  sparkleLayer.appendChild(s);
+  requestAnimationFrame(() => {
+    const dx = (Math.random() - 0.5) * 16;
+    const dy = -10 - Math.random() * 18;
+    s.style.transform = `translate(-50%,-50%) translate(${dx}px, ${dy}px) scale(0.15)`;
+    s.style.opacity = '0';
+  });
+  setTimeout(() => s.remove(), 800);
+}
+let lastX = 0;
+let lastY = 0;
+let isFirstMove = true;
+
+function handlePointerMove(x, y) {
+  if (isFirstMove) {
+    lastX = x;
+    lastY = y;
+    isFirstMove = false;
+    return;
+  }
+
+  // 1. 이전 위치와의 거리를 계산
+  const dist = Math.hypot(x - lastX, y - lastY);
+  
+  // 감도 조절: 최소 8px 이상 움직여야 동작 (자잘한 동작 제외)
+  if (dist < 8) return;
+
+  // 2. 생성 개수 억제: 분모를 20으로 올려 개수를 줄이고, 한번에 최대 5개까지만 생성
+  const count = Math.min(5, Math.max(1, Math.floor(dist / 20)));
+
+  // 3. 궤적 채우기
+  for (let i = 0; i < count; i++) {
+    const t = i / count;
+    // 흩뿌림 범위도 16px -> 10px로 축소하여 더 깔끔하게 연출
+    const spawnX = lastX + (x - lastX) * t + (Math.random() - 0.5) * 10;
+    const spawnY = lastY + (y - lastY) * t + (Math.random() - 0.5) * 10;
+    
+    spawnSparkle(spawnX, spawnY); 
+  }
+
+  lastX = x;
+  lastY = y;
+}
+
+window.addEventListener('mousemove', (e) => handlePointerMove(e.clientX, e.clientY));
+window.addEventListener('touchmove', (e) => {
+  const t = e.touches[0];
+  if (t) handlePointerMove(t.clientX, t.clientY);
+}, { passive: true });
+</script>
+</body>
+</html>
