@@ -39,6 +39,14 @@
     color:var(--text);
   }
 
+      /* 커스텀 마우스 커서 삽입 코드  */
+    cursor: url('cursor.png') 4 4, auto;
+  }
+
+  a, button, .link-item, .add-btn{
+    cursor: url('cursor.png') 4 4, auto; /* 클릭 가능한 요소는 커서 파일 준비되면 url()로 교체 */
+  }
+
   /* ---------- classic chunky scrollbar ---------- */
   .scrollable{ overflow-y:auto; }
   .scrollable::-webkit-scrollbar{ width:15px; }
