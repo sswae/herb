@@ -30,22 +30,19 @@
   *{ box-sizing:border-box; }
 
   html,body{
-    margin:0;
-    padding:0;
-    height:100%;
-    overflow:hidden; /* rule 4: outer/desktop never scrolls */
-    background: radial-gradient(ellipse at 50% 25%, var(--desktop-b), var(--desktop-a));
-    font-family: "Geneva","Tahoma","Verdana",sans-serif;
-    color:var(--text);
-  }
+  margin:0;
+  padding:0;
+  height:100%;
+  overflow:hidden;
+  background: radial-gradient(ellipse at 50% 25%, var(--desktop-b), var(--desktop-a));
+  font-family: "Geneva","Tahoma","Verdana",sans-serif;
+  color:var(--text);
+  cursor: url('./cursor.png') 4 4, auto; /* 중괄호 안으로 이동 */
+}
 
-      /* 커스텀 마우스 커서 삽입 코드  */
-    cursor: url('./cursor.png') 4 4, auto;
-  }
-
-  a, button, .link-item, .add-btn{
-    cursor: url('./cursor.png') 4 4, auto; /* 클릭 가능한 요소는 커서 파일 준비되면 url()로 교체 */
-  }
+a, button, .link-item, .add-btn{
+  cursor: url('./cursor.png') 4 4, auto;
+}
 
   /* ---------- classic chunky scrollbar ---------- */
   .scrollable{ overflow-y:auto; }
