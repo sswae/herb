@@ -621,9 +621,179 @@
 
   .minigame-log .log-status{ color: #fafafa; }
   .minigame-log .log-talk{ color: #ff82dd; font-weight:700; }
+
+  /* ============================================
+     모바일 진입 경고/대기 화면 (NSFW 게이트)
+     ============================================ */
+  .age-gate-overlay{
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    background: #151515;
+    color: #fafafa;
+    display:flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 24px;
+    gap: 16px;
+  }
+  .age-gate-overlay.hidden{ display:none; }
+  .age-gate-title{
+    font-family: 'Cherry Bomb One', cursive;
+    font-size: 20px;
+    color: #ff2ec6;
+  }
+  .age-gate-desc{
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px;
+    line-height: 1.7;
+    max-width: 280px;
+  }
+  .age-gate-actions{
+    display:flex;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .age-gate-actions button{
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px;
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: 1px solid #fafafa;
+    background: transparent;
+    color: #fafafa;
+    cursor: pointer;
+  }
+  .age-gate-actions .confirm{
+    background: #ff2ec6;
+    border-color: #ff2ec6;
+    color: #151515;
+    font-weight: 700;
+  }
+
+  /* ============================================
+     모바일 전용 모드
+     - 사이드바 / 링크 뷰어 영역은 숨기고
+       미니게임(Kabukicho Boy) 창만 노출
+     - 창은 원래 크기(400x600) 레이아웃을 그대로 유지한 채
+       JS에서 계산한 배율만큼 통째로 축소(transform: scale)함
+       → 내부 요소 크기/여백/화살표 위치 등이 절대 깨지지 않음
+     ============================================ */
+  body.mobile-only-mode{
+    overflow-x: hidden;
+  }
+  body.mobile-only-mode .app{
+    height: 100vh;
+    height: 100dvh; /* 모바일 브라우저 주소창 높이 변화 대응 */
+  }
+  body.mobile-only-mode .sidebar{ display:none !important; }
+  body.mobile-only-mode .viewer-bar{ display:none !important; }
+  body.mobile-only-mode #viewerFrame{ display:none !important; }
+  body.mobile-only-mode .placeholder{ display:none !important; }
+  body.mobile-only-mode .viewer-body{
+    background: #151515;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow: hidden;
+  }
+  body.mobile-only-mode .minigame-wrap{
+    position: static;
+    flex: none;
+    /* width/height는 JS(fitMinigameToScreen)가 축소된 실제 크기로 지정함 */
+  }
+  body.mobile-only-mode .minigame-toggle{ display:none !important; }
+  body.mobile-only-mode .minigame-window{
+    width: 400px;
+    height: 600px;
+    flex: none;
+    transform-origin: top left;
+    /* transform: scale(...)는 JS(fitMinigameToScreen)가 화면 크기에 맞춰 지정함 */
+  }
 </style>
 </head>
 <body>
+
+<!-- ============================================
+     모바일 진입 경고 / 대기 화면 (NSFW 게이트)
+     - 모바일 환경으로 판단될 때만 표시됨
+     - '아니오' 선택 시 페이지를 벗어남
+     - 이 스크립트는 아래 다른 스크립트보다 먼저,
+       그리고 즉시(동기적으로) 실행되어야 하므로
+       body 맨 위에 위치시킴
+     ============================================ -->
+<div class="age-gate-overlay hidden" id="ageGateOverlay">
+  <div class="age-gate-title">⚠️ 성인 전용 콘텐츠 안내</div>
+  <div class="age-gate-desc">
+    이 페이지에는 성인(만 19세 이상)만<br>
+    이용할 수 있는 콘텐츠가 포함되어 있습니다.<br><br>
+    정말로 접속하시겠습니까?
+  </div>
+  <div class="age-gate-actions">
+    <button id="ageGateNo">아니오</button>
+    <button id="ageGateYes" class="confirm">예, 접속합니다</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  // 모바일(휴대폰) 여부 판단: 아이패드 등 태블릿은 제외하고 휴대폰 UA만 확인
+  var isMobile = /iPhone|iPod|Android.*Mobile/i.test(navigator.userAgent);
+
+  var overlay = document.getElementById('ageGateOverlay');
+
+  if(!isMobile){
+    // 데스크탑/태블릿: 게이트 없이 기존 화면 그대로 노출
+    overlay.classList.add('hidden');
+    return;
+  }
+
+  // 모바일: 사이드바/뷰어를 숨기고 미니게임 창만 노출하는 모드로 전환
+  document.body.classList.add('mobile-only-mode');
+  overlay.classList.remove('hidden');
+
+  // 미니게임 창(원래 400x600 고정 레이아웃)을 화면 크기에 맞춰
+  // 비율 그대로 축소. 내부 요소 크기는 전혀 건드리지 않으므로
+  // 말풍선 화살표 같은 위치 계산이 절대 어긋나지 않음.
+  function fitMinigameToScreen(){
+    var win = document.getElementById('minigameWindow');
+    var wrap = document.getElementById('minigameWrap');
+    if(!win || !wrap) return;
+
+    var margin = 16; // 화면 가장자리 여백
+    var availW = window.innerWidth - margin;
+    var availH = window.innerHeight - margin;
+    var scale = Math.min(1, availW / 400, availH / 600);
+
+    win.style.transform = 'scale(' + scale + ')';
+    wrap.style.width = (400 * scale) + 'px';
+    wrap.style.height = (600 * scale) + 'px';
+  }
+
+  fitMinigameToScreen();
+  window.addEventListener('resize', fitMinigameToScreen);
+  window.addEventListener('orientationchange', fitMinigameToScreen);
+
+  document.getElementById('ageGateYes').addEventListener('click', function(){
+    overlay.classList.add('hidden');
+    // 미니게임 창을 자동으로 띄움 (기존 openMinigame()과 동일한 동작)
+    var win = document.getElementById('minigameWindow');
+    var toggle = document.getElementById('minigameToggle');
+    if(win) win.style.display = 'flex';
+    if(toggle) toggle.style.display = 'none';
+    fitMinigameToScreen();
+  });
+
+  document.getElementById('ageGateNo').addEventListener('click', function(){
+    // 페이지 이동 없이, 오버레이는 그대로 유지한 채 안내 문구로 전환
+    overlay.innerHTML =
+      '<div class="age-gate-title">이용이 종료되었습니다</div>' +
+      '<div class="age-gate-desc">브라우저(탭)를 닫아주세요.</div>';
+  });
+})();
+</script>
 
 <div class="app">
   <aside class="sidebar">
@@ -1175,9 +1345,17 @@ onSnapshot(query(linksCol, orderBy('createdAt', 'asc')), (snapshot) => {
 let petMessages = [];
 
 fetch('./petMessages.json')
-  .then(res => res.json())
+  .then(res => {
+    if(!res.ok) throw new Error('petMessages.json 응답 오류: ' + res.status);
+    return res.json();
+  })
   .then(data => {
     petMessages = data;
+  })
+  .catch(err => {
+    // 실패해도 조용히 묻히지 않고 콘솔에서 원인을 바로 확인할 수 있도록 표시
+    console.error('[HERB] petMessages.json을 불러오지 못했습니다:', err);
+    console.error('[HERB] → index.html과 같은 폴더에 petMessages.json이 있는지, http(s)로 접속 중인지(file://로 직접 열면 fetch가 막힘) 확인해주세요.');
   });
 
   petArrow.addEventListener('click', () => {
