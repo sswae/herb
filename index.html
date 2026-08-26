@@ -983,7 +983,7 @@ onSnapshot(query(linksCol, orderBy('createdAt', 'asc')), (snapshot) => {
   taichiBox.addEventListener('click', showRandomTaichiImage);
 
   // --- 방치 시간에 따라 자동으로도 랜덤 전환 ---
-  const TAICHI_IMAGE_CHANGE_INTERVAL_MS = 20000; // 20초마다
+  const TAICHI_IMAGE_CHANGE_INTERVAL_MS = 40000; // 40초마다
   setInterval(showRandomTaichiImage, TAICHI_IMAGE_CHANGE_INTERVAL_MS);
 
   // --- 갤러리(64x64 바둑판) 렌더링 ---
@@ -1138,7 +1138,7 @@ onSnapshot(query(linksCol, orderBy('createdAt', 'asc')), (snapshot) => {
   };
 
   // --- 말풍선은 클릭이나 창 열림과 무관하게 2초마다 계속 랜덤으로 바뀜 ---
-  const SPEECH_CHANGE_INTERVAL_MS = 2000; // 3초마다
+  const SPEECH_CHANGE_INTERVAL_MS = 2000; // 2초마다
   changeRandomSpeech(); // 처음 한 번 즉시 채워줌
   setInterval(changeRandomSpeech, SPEECH_CHANGE_INTERVAL_MS);
 
@@ -1190,7 +1190,7 @@ fetch('./petMessages.json')
 
 // --- 방치(클릭 없이 그냥 켜둠) 시에도 일정 주기마다 랜덤 문장을 자동 출력 ---
 // (창이 닫혀있어도 계속 진행됨)
-  const AUTO_MESSAGE_INTERVAL_MS = 10000; // 10초마다
+  const AUTO_MESSAGE_INTERVAL_MS = 20000; // 20초마다
 
   function pickRandomAutoMessage(){
     // 쉬하기 문장 + 상호작용 문장을 합쳐서 그 중 하나를 무작위로 고릅니다
