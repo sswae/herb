@@ -641,13 +641,13 @@
   }
   .age-gate-overlay.hidden{ display:none; }
   .age-gate-title{
-    font-family: 'Cherry Bomb One', cursive;
-    font-size: 20px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 16px;
     color: #ff2ec6;
   }
   .age-gate-desc{
     font-family: 'Noto Sans KR', sans-serif;
-    font-size: 13px;
+    font-size: 10px;
     line-height: 1.7;
     max-width: 280px;
   }
@@ -725,15 +725,15 @@
        body 맨 위에 위치시킴
      ============================================ -->
 <div class="age-gate-overlay hidden" id="ageGateOverlay">
-  <div class="age-gate-title">⚠️ 성인 전용 콘텐츠 안내</div>
+  <div class="age-gate-title">🍒Kabukicho Boy🍒<br>待機中〜〜〜ッッ🔥</div>
   <div class="age-gate-desc">
-    이 페이지에는 성인(만 19세 이상)만<br>
-    이용할 수 있는 콘텐츠가 포함되어 있습니다.<br><br>
-    정말로 접속하시겠습니까?
+    このページ、マジで18禁コンテンツ入ってるんだけど！🔞<br>
+    ホントに入っちゃう<br><br>
+    大丈夫そ？✨
   </div>
   <div class="age-gate-actions">
-    <button id="ageGateNo">아니오</button>
-    <button id="ageGateYes" class="confirm">예, 접속합니다</button>
+    <button id="ageGateNo">No</button>
+    <button id="ageGateYes" class="confirm">Yes</button>
   </div>
 </div>
 
@@ -789,8 +789,8 @@
   document.getElementById('ageGateNo').addEventListener('click', function(){
     // 페이지 이동 없이, 오버레이는 그대로 유지한 채 안내 문구로 전환
     overlay.innerHTML =
-      '<div class="age-gate-title">이용이 종료되었습니다</div>' +
-      '<div class="age-gate-desc">브라우저(탭)를 닫아주세요.</div>';
+      '<div class="age-gate-title">終了〜！</div>' +
+      '<div class="age-gate-desc">ブラウザ閉じちゃってね〜💖</div>';
   });
 })();
 </script>
