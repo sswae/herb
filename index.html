@@ -18,7 +18,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cherry+Bomb+One&family=Noto+Sans+KR:wght@400;500;700&family=Poor+Story&display=swap" rel="stylesheet">
 
 <style>
   :root{
@@ -226,9 +226,7 @@
   .modal-overlay.open{ display:flex; }
 
   .modal{
-    background:#fff;
-    border: 2px solid var(--line);
-    border-radius: 6px;
+    background:#ff82dd;
     width: 320px;
     padding: 20px;
     display:flex;
@@ -238,13 +236,13 @@
 
   .modal h3{
     margin:0;
-    font-size: 14px;
+    font-size: 16px;
+    color:#151515;
   }
 
   .modal input{
     padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    border: 1px solid #151515;
     font-family: 'Noto Sans KR', sans-serif;
     font-size: 13px;
   }
@@ -257,11 +255,10 @@
   }
 
   .modal-actions button{
-    border: 1px solid var(--line);
-    background:#fff;
-    border-radius: 4px;
-    padding: 6px 12px;
-    font-size: 12px;
+    background:none;
+    border:none;
+    padding: 6px 6px;
+    font-size: 9px;
   }
 
   .modal-actions .primary{
@@ -269,6 +266,363 @@
     color:#ff82dd;
     border-color: var(--ink);
   }
+
+  /* ============================================
+     미니게임 (Kabukicho Boy) 창
+     ============================================ */
+  .minigame-wrap{
+    position:absolute;
+    right: 16px;
+    bottom: 16px;
+    z-index: 50;
+    font-family: 'Poor Story', sans-serif;
+  }
+
+  /* --- 숨겨졌을 때 표시되는 작은 버튼 --- */
+  .minigame-toggle{
+    width: auto;
+    height: auto;
+    font-size: 12px;
+    display: inline-block;
+    background: none;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    outline: none;
+  }
+
+  @keyframes mg-toggle-pulse{
+    0%, 100%{ transform: scale(1); }
+    50%{ transform: scale(1.08); }
+  }
+
+  /* --- 본 창 --- */
+  .minigame-window{
+    width: 400px;
+    height: 600px;
+    max-height: calc(100vh - 32px);
+    display:flex;
+    flex-direction:column;
+    background: #ff82dd;
+    border: 2px solid #4971e5;
+    border-radius: 8px;
+    overflow:hidden;
+    box-shadow: 0 6px 24px rgba(0,0,0,.5);
+  }
+
+  .minigame-titlebar{
+    flex: none;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding: 4px 6px 4px 10px;
+    background: linear-gradient(180deg, #4971e5, #2b48b5);
+    color: #fafafa;
+  }
+
+  .minigame-titletext{
+    font-size: 11px;
+    white-space: nowrap;
+    overflow:hidden;
+    text-overflow: ellipsis;
+  }
+
+  .minigame-close{
+    flex:none;
+    width: 20px;
+    height: 20px;
+    border: 1px solid #fafafa;
+    border-radius: 3px;
+    background: #ff861b;
+    color: #fafafa;
+    font-size: 12px;
+    font-weight:700;
+    line-height:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .minigame-close:hover{ background: #fe4e6f; }
+
+  .minigame-body{
+    flex:1;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap: 8px;
+    padding: 12px 14px 14px;
+    overflow-y:auto;
+  }
+
+  .minigame-header{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap: 6px;
+  }
+
+  .minigame-heart{
+    font-size: 12px;
+    color: #fafafa;
+  }
+
+  .minigame-title{
+    margin: 0;
+    font-family: 'Cherry Bomb One', cursive;
+    font-size: 26px;
+    line-height: 1.05;
+    text-align:center;
+    -webkit-text-stroke: 4px #fafafa;
+    paint-order: stroke fill;
+  }
+
+  .title-pink {
+    color: #fe4e6f;
+  }
+
+  .title-blue {
+    color: #4971e5;
+  }
+
+.minigame-container {
+    display: flex;
+    align-items: center; /* 세로 중앙 정렬 */
+    justify-content: flex-start; /* 가로 중앙 정렬 (필요 시) */
+    align-self: flex-start;
+    gap: 5px; /* 두 요소 사이 간격 */
+}
+
+.minigame-peeing{
+    font-family: 'Cherry Bomb One', monospace;
+    font-size: 18px;
+    color: #f1d04a;
+    -webkit-text-stroke: 4px #2b48b5;
+    paint-order: stroke fill;
+    padding: 2px 2px;
+    cursor: url('cursor.png') 4 4, pointer;
+    user-select:none;
+    /* 클릭과 무관하게 무한히 떨리도록 설정 */
+    animation: mg-shake .15s ease-in-out infinite;
+    white-space: nowrap; 
+  }
+  .minigame-peeing:active{ transform: translateY(1px); }
+
+  .minigame-hearts{
+    flex: 1;
+    background: #151515;
+    padding: 6px 10px;
+    text-align:center;
+    font-size: 14px;
+  }
+
+  @keyframes mg-shake{
+    0%, 100%{ transform: translateX(0) rotate(0deg); }
+    25%{ transform: translateX(-1px) rotate(-1deg); }
+    75%{ transform: translateX(1px) rotate(1deg); }
+  }
+
+  .minigame-numbers{
+    display:flex;
+    gap: 6px;
+    align-self: flex-start;
+  }
+
+  .num-btn{
+    width: auto;
+    height: 22px;
+    color: #2b48b5;
+    font-size: 12px;
+    font-weight:700;
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 0 4px;
+    white-space: nowrap;
+  }
+
+  .minigame-main{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:flex-start;
+    gap: 10px;
+  }
+
+  .minigame-taichibox{
+    width: 150px;
+    height: 150px;
+    flex: none;
+    border: 1px solid #2b48b5;
+    background: #151515;
+    color: #fafafa;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    font-size: 12px;
+    padding: 8px;
+    align-self: flex-start;
+    overflow: hidden;
+    position: relative;
+    cursor: url('cursor.png') 4 4, pointer;
+  }
+
+  .minigame-taichibox .taichi-placeholder{
+    color: #fafafa;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  /* 업로드된 이미지: 클릭 여부와 무관하게 항상 덜컥거리며 거칠게 흔들림 */
+  .minigame-taichibox img{
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    /* steps()로 부드러운 보간 없이 뚝뚝 끊어지듯 이동 → 거친 느낌 */
+    animation: mg-wobble .45s steps(2, jump-end) infinite;
+  }
+
+  @keyframes mg-wobble{
+    0%   { transform: translate(0, 0) rotate(0deg); }
+    10%  { transform: translate(-1px, -1px) rotate(-1deg); }
+    30%  { transform: translate(1px, -2px) rotate(1deg); }
+    80%  { transform: translate(-2px, 0) rotate(0deg); }
+    90%  { transform: translate(2px, 0) rotate(0deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+  }
+
+  /* --- 이미지 추가 버튼 --- */
+  .add-image-btn{
+    width: auto;
+    height: 22px;
+    color: #2b48b5;
+    font-size: 11px;
+    font-weight:700;
+    border-radius: 3px;
+    padding: 0 6px;
+    white-space: nowrap;
+    cursor: url('cursor.png') 4 4, pointer;
+    background: none;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    outline: none;
+  }
+  .add-image-btn:hover{ color:#fafafa; }
+
+  /* --- 타이치 이미지 업로드 모달 --- */
+  .taichi-file-row{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+  }
+
+  .taichi-file-row input[type="file"]{
+    font-size: 12px;
+    flex: 1;
+  }
+
+  .taichi-gallery-label{
+    font-size: 9px;
+    color: #151515;
+    margin-top: 4px;
+  }
+
+  .taichi-gallery{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, 64px);
+    gap: 6px;
+    max-height: 220px;
+    min-height: 70px;
+    overflow-y:auto;
+    padding: 4px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fafafa;
+  }
+
+  .taichi-gallery-item{
+    width: 64px;
+    height: 64px;
+    border: 1px solid #2b48b5;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .taichi-gallery-item img{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display:block;
+    cursor: url('cursor.png') 4 4, pointer;
+  }
+
+  .minigame-speech{
+    flex: none;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap: 4px;
+  }
+
+  .speech-bubble{
+    position: relative; /* 내부의 화살표를 절대 위치로 앉히기 위한 기준점 */
+    background: #fafafa;
+    color: #ff2ec6;
+    border-radius: 50%;
+    padding: 40px 30px;
+    font-size: 12px;
+    font-style: italic;
+    font-weight: 700;
+    text-align:center;
+    width: 200px;
+  }
+
+  .speech-bubble-text{
+    display:block;
+  }
+
+  .speech-arrow{
+    position: absolute;
+    right: 30px;
+    bottom: 30px;
+    font-size: 9px;
+    color: #fe4e6f;
+    animation: mg-bounce 1s ease-in-out infinite;
+    cursor: url('cursor.png') 4 4, pointer;
+  }
+
+  @keyframes mg-bounce{
+    0%, 100%{ transform: translateY(0); }
+    50%{ transform: translateY(5px); }
+  }
+
+  .minigame-nametag{
+    width: 150px;
+    text-align:center;
+    background: #151515;
+    color: #ff2ec6;
+    padding: 6px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    align-self: flex-start;
+  }
+
+  .minigame-log{
+    width:100%;
+    flex:1;
+    min-height: 90px;
+    background: #151515;
+    padding: 8px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #fafafa;
+    overflow-y:auto;
+  }
+
+  .minigame-log .log-status{ color: #fafafa; }
+  .minigame-log .log-talk{ color: #ff82dd; font-weight:700; }
 </style>
 </head>
 <body>
@@ -290,6 +644,59 @@
     </div>
     <div class="viewer-body">
       <iframe id="viewerFrame" style="display:none;"></iframe>
+
+      <!-- ============================================
+           미니게임 (Kabukicho Boy)
+           - 사이드바 링크 클릭으로 iframe이 바뀌어도
+             이 영역은 그대로 유지됨
+           - 처음 진입 시 숨김 상태로 시작
+           ============================================ -->
+      <div class="minigame-wrap" id="minigameWrap">
+        <button class="minigame-toggle" id="minigameToggle">💜</button>
+
+        <div class="minigame-window" id="minigameWindow" style="display:none;">
+          <div class="minigame-titlebar">
+            <span class="minigame-titletext">⋆｡‧˚ʚ🍒ɞ˚‧｡⋆ギャル男さん、天動説って信じます？！⋆｡‧˚ʚ🍒ɞ˚‧｡⋆</span>
+            <button class="minigame-close" id="minigameClose" title="숨기기">X</button>
+          </div>
+
+          <div class="minigame-body">
+            <div class="minigame-header">
+              <span class="minigame-heart">₊‧꒰ა💜ɞ ꒦꒷</span>
+              <h1 class="minigame-title">
+                <span class="title-pink">カブキチョウ</span>
+                <span class="title-blue">⭐️ ボーイ</span>
+              </h1>
+              <span class="minigame-heart">꒷꒦ ʚ💜૮꒱‧₊</span>
+            </div>
+
+<div class="minigame-container">
+    <div class="minigame-peeing" id="minigamePeeing">I'M PEEING!!</div>
+    <div class="minigame-hearts" id="minigameHearts">🩷🩷🩷🩷🩷🩷🩷🩷🩷</div>
+</div>
+
+            <div class="minigame-numbers" id="minigameNumbers">
+              <button class="add-image-btn" id="addTaichiImageBtn">[ Portrait ]</button>
+            </div>
+
+            <div class="minigame-main">
+              <div class="minigame-taichibox" id="minigameTaichiBox">
+                <span class="taichi-placeholder">no portrait</span>
+              </div>
+              <div class="minigame-speech">
+                <div class="speech-bubble">
+                  <span class="speech-bubble-text" id="speechBubble"></span>
+                  <span class="speech-arrow" id="minigamePet">▼</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="minigame-nametag">☀️TAICHI☀️</div>
+
+            <div class="minigame-log" id="minigameLog"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </main>
 </div>
@@ -303,6 +710,24 @@
     <div class="modal-actions">
       <button id="cancelBtn">❌</button>
       <button id="saveBtn" class="primary">✅</button>
+    </div>
+  </div>
+</div>
+
+<!-- 타이치 이미지 업로드 / 갤러리 모달 -->
+<div class="modal-overlay" id="taichiImageModalOverlay">
+  <div class="modal">
+    <h3>🥵太一、連続絶頂♡🥵</h3>
+
+    <div class="taichi-file-row">
+      <input type="file" id="taichiFileInput" accept="image/*" multiple>
+    </div>
+
+    <div class="taichi-gallery-label">* Right-click delete</div>
+    <div class="taichi-gallery" id="taichiGallery"></div>
+
+    <div class="modal-actions">
+      <button id="taichiModalCloseBtn">❌</button>
     </div>
   </div>
 </div>
@@ -321,6 +746,9 @@ import {
   getFirestore, collection, addDoc, doc, updateDoc, deleteDoc,
   onSnapshot, query, orderBy, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+import {
+  getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject
+} from "https://www.gstatic.com/firebasejs/10.13.1/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDQ8Yp6GMGXZ9DRjSdHkxom_Jx50ELwApA",
@@ -334,7 +762,19 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const storage = getStorage(app);
 const linksCol = collection(db, 'herbLinks');
+
+// --- 타이치 Portrait 이미지: Firestore(herbTaichiImages 컬렉션) + Storage(파일 본체) ---
+const taichiImagesCol = collection(db, 'herbTaichiImages');
+
+// 미니게임 스크립트(별도의 <script type="module">)에서 쓸 수 있도록 window에 노출
+// (두 module 스크립트는 서로 다른 스코프라 import를 공유할 수 없어, window 전역으로 넘겨줌)
+window.taichiFirebase = {
+  db, storage, taichiImagesCol,
+  addDoc, doc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp,
+  storageRef, uploadBytes, getDownloadURL, deleteObject
+};
 
 let links = [];
 let editingId = null;
@@ -465,6 +905,306 @@ onSnapshot(query(linksCol, orderBy('createdAt', 'asc')), (snapshot) => {
   console.error('Firestore 구독 오류:', error);
 });
 
+</script>
+
+<!-- ============================================
+     미니게임 (Kabukicho Boy) 동작 스크립트
+     - 링크 목록(herbLinks)과는 무관하게 독립적으로 동작하지만,
+       Portrait 이미지(herbTaichiImages)는 위쪽 Firebase 초기화 스크립트에서
+       window.taichiFirebase로 넘겨준 도구를 사용함
+     - 사이드바에서 어떤 링크를 눌러도(iframe 변경) 이 영역은
+       DOM에서 사라지지 않으므로 계속 표시/상태 유지됨
+     ============================================ -->
+<script type="module">
+(function(){
+  const wrapEl = document.getElementById('minigameWrap');
+  const toggleBtn = document.getElementById('minigameToggle');
+  const windowEl = document.getElementById('minigameWindow');
+  const closeBtn = document.getElementById('minigameClose');
+  const heartsEl = document.getElementById('minigameHearts');
+  const peeingBtn = document.getElementById('minigamePeeing');
+  const petArrow = document.getElementById('minigamePet');
+  const numbersWrap = document.getElementById('minigameNumbers');
+  const taichiBox = document.getElementById('minigameTaichiBox');
+  const logEl = document.getElementById('minigameLog');
+
+  // --- 타이치 이미지 업로드 / 갤러리 관련 요소 ---
+  const addTaichiImageBtn = document.getElementById('addTaichiImageBtn');
+  const taichiImageModalOverlay = document.getElementById('taichiImageModalOverlay');
+  const taichiModalCloseBtn = document.getElementById('taichiModalCloseBtn');
+  const taichiFileInput = document.getElementById('taichiFileInput');
+  const taichiGalleryEl = document.getElementById('taichiGallery');
+
+  // Firebase 관련 도구 (첫 번째 module 스크립트에서 window에 노출해둔 것)
+  const {
+    db, storage, taichiImagesCol,
+    addDoc, doc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp,
+    storageRef, uploadBytes, getDownloadURL, deleteObject
+  } = window.taichiFirebase;
+
+  // taichiImages: [{ id, url, storagePath }, ...] — Firestore 실시간 구독으로 채워짐
+  let taichiImages = [];
+  let currentTaichiImage = null; // 현재 박스에 표시 중인 이미지 객체
+
+  // --- 우측 박스 안에 이미지를 실제로 표시하는 함수 ---
+  function renderTaichiBox(){
+    taichiBox.innerHTML = '';
+    if(!currentTaichiImage){
+      const span = document.createElement('span');
+      span.className = 'taichi-placeholder';
+      span.innerHTML = 'no portrait';
+      taichiBox.appendChild(span);
+      return;
+    }
+    const img = document.createElement('img');
+    img.src = currentTaichiImage.url;
+    img.alt = 'TAICHI';
+    taichiBox.appendChild(img);
+  }
+
+  // --- 갤러리에 저장된 이미지 중 하나를 무작위로 골라 박스에 표시 ---
+  function showRandomTaichiImage(){
+    if(taichiImages.length === 0){
+      currentTaichiImage = null;
+      renderTaichiBox();
+      return;
+    }
+    let candidates = taichiImages;
+    // 이미지가 2장 이상이면 방금 보여준 것과 다른 이미지가 나오도록 함
+    if(taichiImages.length > 1 && currentTaichiImage){
+      candidates = taichiImages.filter(img => img.id !== currentTaichiImage.id);
+    }
+    const randomIndex = Math.floor(Math.random() * candidates.length);
+    currentTaichiImage = candidates[randomIndex];
+    renderTaichiBox();
+  }
+
+  // --- 박스를 클릭하면 다른 이미지로 무작위 전환 (요청대로 계속 유지) ---
+  taichiBox.addEventListener('click', showRandomTaichiImage);
+
+  // --- 방치 시간에 따라 자동으로도 랜덤 전환 ---
+  const TAICHI_IMAGE_CHANGE_INTERVAL_MS = 20000; // 20초마다
+  setInterval(showRandomTaichiImage, TAICHI_IMAGE_CHANGE_INTERVAL_MS);
+
+  // --- 갤러리(64x64 바둑판) 렌더링 ---
+  function renderTaichiGallery(){
+    taichiGalleryEl.innerHTML = '';
+    if(taichiImages.length === 0){
+      const empty = document.createElement('div');
+      empty.className = 'taichi-gallery-empty';
+      empty.textContent = '등록된 이미지가 없어요.';
+      taichiGalleryEl.appendChild(empty);
+      return;
+    }
+    taichiImages.forEach((imgData) => {
+      const item = document.createElement('div');
+      item.className = 'taichi-gallery-item';
+
+      const img = document.createElement('img');
+      img.src = imgData.url;
+      img.title = '우클릭으로 삭제';
+
+      // 우클릭(contextmenu) 시 Firestore 문서 + Storage 파일 함께 삭제
+      item.addEventListener('contextmenu', async (e) => {
+        e.preventDefault();
+        if(!confirm('이 이미지를 삭제할까요?')) return;
+        try{
+          await deleteDoc(doc(db, 'herbTaichiImages', imgData.id));
+          if(imgData.storagePath){
+            await deleteObject(storageRef(storage, imgData.storagePath)).catch(err => {
+              console.error('Storage 파일 삭제 오류:', err);
+            });
+          }
+          // renderTaichiGallery()는 onSnapshot이 변경을 감지하면 자동으로 다시 호출됨
+        }catch(err){
+          console.error('이미지 삭제 오류:', err);
+          alert('이미지 삭제에 실패했어요.');
+        }
+      });
+
+      item.appendChild(img);
+      taichiGalleryEl.appendChild(item);
+    });
+  }
+
+  function openTaichiImageModal(){
+    renderTaichiGallery();
+    taichiImageModalOverlay.classList.add('open');
+  }
+
+  function closeTaichiImageModal(){
+    taichiImageModalOverlay.classList.remove('open');
+  }
+
+  addTaichiImageBtn.addEventListener('click', openTaichiImageModal);
+  taichiModalCloseBtn.addEventListener('click', closeTaichiImageModal);
+  taichiImageModalOverlay.addEventListener('click', (e) => {
+    if(e.target === taichiImageModalOverlay) closeTaichiImageModal();
+  });
+
+  // --- 새 이미지 파일 첨부(여러 장 동시 선택 가능) → Storage 업로드 + Firestore 기록 ---
+  taichiFileInput.addEventListener('change', async () => {
+    const files = Array.from(taichiFileInput.files || []);
+    if(files.length === 0) return;
+
+    for(const file of files){
+      try{
+        const path = `taichiImages/${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name}`;
+        const fileRef = storageRef(storage, path);
+        await uploadBytes(fileRef, file);
+        const url = await getDownloadURL(fileRef);
+        await addDoc(taichiImagesCol, { url, storagePath: path, createdAt: serverTimestamp() });
+        // 화면 갱신(갤러리/박스)은 onSnapshot 구독이 자동으로 처리함
+      }catch(err){
+        console.error('이미지 업로드 오류:', file.name, err);
+        alert(`'${file.name}' 업로드에 실패했어요.`);
+      }
+    }
+
+    taichiFileInput.value = '';
+  });
+
+  // --- Firestore 실시간 구독: 다른 기기에서 올리거나 지워도 자동 반영됨 ---
+  onSnapshot(query(taichiImagesCol, orderBy('createdAt', 'asc')), (snapshot) => {
+    taichiImages = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // 갤러리 모달이 열려있다면 목록 갱신
+    if(taichiImageModalOverlay.classList.contains('open')){
+      renderTaichiGallery();
+    }
+
+    // 아직 아무 이미지도 표시된 적 없으면(=최초 로딩) 무작위로 하나 골라 표시
+    if(!currentTaichiImage && taichiImages.length > 0){
+      showRandomTaichiImage();
+      return;
+    }
+
+    // 표시 중이던 이미지가 삭제되어 목록에서 사라졌다면 다른 이미지로 교체
+    if(currentTaichiImage && !taichiImages.some(img => img.id === currentTaichiImage.id)){
+      showRandomTaichiImage();
+    }
+  }, (error) => {
+    console.error('타이치 이미지 구독 오류:', error);
+  });
+
+  function addLog(text, isTalk){
+    const line = document.createElement('div');
+    line.className = isTalk ? 'log-talk' : 'log-status';
+    line.textContent = text;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function openMinigame(){
+    windowEl.style.display = 'flex';
+    toggleBtn.style.display = 'none';
+  }
+
+  function hideMinigame(){
+    windowEl.style.display = 'none';
+    toggleBtn.style.display = 'flex';
+  }
+
+  // --- 초기 상태: 처음 진입 시에는 항상 숨김 상태로 시작 ---
+  hideMinigame();
+
+  // --- 말풍선 리스트 ---
+  const speechMessages = [
+    "자, 자지 쥬세요오옷...♡",
+    "헤읏!♡ 하윽!♡ 하아앙...!♡",
+    "아앙! 앙! 하앙! 뱃속 기분 최고오...♡",
+    "히읏! 헤응! 헤극! 조아앗!♡",
+    "큥큥♡ 박히는 거 기, 기분 조아아...♡",
+    "보지♡ 보지 망가져어엇!♡♡♡",
+    "타이치 보지 준비 완료옷♡",
+    "빨리! 자지 빨리 바, 박아줘엇!♡",
+    "여기 암컷 구멍에 박아주데여어어...♡",
+    "치짱 자지 조아, 조아앗!♡♡♡"
+  ];
+
+  const speechBubbleEl = document.getElementById('speechBubble');
+
+  // --- 방문할 때마다 문장을 무작위로 골라 심어주는 함수 ---
+  function changeRandomSpeech() {
+    const randomIndex = Math.floor(Math.random() * speechMessages.length);
+    speechBubbleEl.textContent = speechMessages[randomIndex];
+  }
+
+  // 미니게임 창이 열릴 때마다 문장이 새로 바뀌도록 엮어줍니다
+  const originalOpenMinigame = openMinigame;
+  openMinigame = function() {
+    originalOpenMinigame();
+    changeRandomSpeech();
+  };
+
+  // --- 말풍선은 클릭이나 창 열림과 무관하게 2초마다 계속 랜덤으로 바뀜 ---
+  const SPEECH_CHANGE_INTERVAL_MS = 2000; // 3초마다
+  changeRandomSpeech(); // 처음 한 번 즉시 채워줌
+  setInterval(changeRandomSpeech, SPEECH_CHANGE_INTERVAL_MS);
+
+  // --- 초기 로그 예시 ---
+  addLog(">> 타이치 : 으으응♡ 치짱, 여기, 여기, 여기 구멍 간지러워엇♡", true);
+  addLog("[상태] '타이치'는 한계까지 다리를 활짝 벌리고 대기 중이다...");
+  addLog("----------------------------------------");
+
+  toggleBtn.addEventListener('click', openMinigame);
+  closeBtn.addEventListener('click', hideMinigame);
+
+// --- 쉬하기 버튼을 눌렀을 때 나올 수 있는 문장들의 목록 ---
+  const peeingMessages = [
+    { text: "[상태 : 🍆💦] '타이치'가 참지 못하고 쉬를 쏟아내기 시작했다!", isTalk: false },
+    { text: ">> 타이치 : 나온, 나오, 나온닷...! 흐으읏!♡♡♡", isTalk: true },
+    { text: "[상태 : 🍆💦] '타이치'의 몸이 부르르 떨리며 다리 사이에 쪼르륵 웅덩이가 고인다.", isTalk: false },
+    { text: ">> 타이치 : 우으읏... 이렇게 잔뜩 싸는 거, 치짱한테 전부 들켜버렸어...♡", isTalk: true },
+    { text: ">> 타이치 : 아앗, 흘러내리는 거 보지 마아...! 누, 눈 감아줘...!♡", isTalk: true },
+    { text: "[상태 : 🍆💦] '타이치'가 허리를 바짝 세운 채 뜨거운 액체를 거침없이 쏟아낸다.", isTalk: false },
+    { text: "[상태 : 🍆💦] '타이치'가 쾌락을 참지 못한 듯 두 눈에 흰자위를 드러내고 몸을 부르르 떤다.", isTalk: false },
+    { text: ">> 타이치 : 히읏, 너무 부끄러웟...♡ 하지만 멈출 수 없어...♡", isTalk: true }
+  ];
+
+  peeingBtn.addEventListener('click', () => {
+    // 목록 안에서 무작위로 하나의 문장을 골라냅니다
+    const randomIndex = Math.floor(Math.random() * peeingMessages.length);
+    const selected = peeingMessages[randomIndex];
+    
+    // 골라낸 문장을 기록창에 띄웁니다
+    addLog(selected.text, selected.isTalk);
+  });
+
+// --- 상호작용(화살표) 버튼을 눌렀을 때 나올 수 있는 문장들의 목록 ---
+let petMessages = [];
+
+fetch('./petMessages.json')
+  .then(res => res.json())
+  .then(data => {
+    petMessages = data;
+  });
+
+  petArrow.addEventListener('click', () => {
+    // 목록 안에서 무작위로 하나의 문장을 골라냅니다
+    if (!petMessages || petMessages.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * petMessages.length);
+    const selected = petMessages[randomIndex];
+    addLog(selected.text, selected.isTalk);
+  });
+
+// --- 방치(클릭 없이 그냥 켜둠) 시에도 일정 주기마다 랜덤 문장을 자동 출력 ---
+// (창이 닫혀있어도 계속 진행됨)
+  const AUTO_MESSAGE_INTERVAL_MS = 10000; // 10초마다
+
+  function pickRandomAutoMessage(){
+    // 쉬하기 문장 + 상호작용 문장을 합쳐서 그 중 하나를 무작위로 고릅니다
+    const pool = [...peeingMessages, ...petMessages];
+    if (pool.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * pool.length);
+    const selected = pool[randomIndex];
+    addLog(selected.text, selected.isTalk);
+  }
+
+  setInterval(() => {
+    pickRandomAutoMessage();
+  }, AUTO_MESSAGE_INTERVAL_MS);
+})();
 </script>
 
 <!-- ============================================
