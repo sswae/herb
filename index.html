@@ -280,6 +280,9 @@
 
   /* --- 숨겨졌을 때 표시되는 작은 버튼 --- */
   .minigame-toggle{
+	position: fixed; /* 또는 absolute */
+  	top: 20px;       /* 화면/부모 요소 위에서 20px 떨어짐 */
+  	right: 20px;     /* 화면/부모 요소 오른쪽에서 20px 떨어짐 */
     width: auto;
     height: auto;
     font-size: 12px;
@@ -287,13 +290,7 @@
     background: none;
     border: none;
     box-shadow: none;
-    padding: 0;
     outline: none;
-  }
-
-  @keyframes mg-toggle-pulse{
-    0%, 100%{ transform: scale(1); }
-    50%{ transform: scale(1.08); }
   }
 
   /* --- 본 창 --- */
@@ -571,6 +568,7 @@
     background: #fafafa;
     color: #ff2ec6;
     border-radius: 50%;
+	box-shadow: 0 10px 10px rgba(0,0,0,.2);
     padding: 40px 30px;
     font-size: 12px;
     font-style: italic;
