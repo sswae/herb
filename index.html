@@ -11,8 +11,6 @@
   ============================================
   1) 이미지 파일을 쓰고 싶다면 파일을 같은 폴더에 두고 href만 바꾸면 됨:
      <link rel="icon" type="image/png" href="favicon.png">
-  2) 지금은 파일 없이도 바로 동작하도록 별 모양 이모지를 SVG 데이터로 넣어둠.
-     원하는 이미지가 생기면 아래 한 줄만 교체하면 됨.
 -->
 <link rel="icon" type="image/png" href="favicon.png">
 
@@ -22,10 +20,10 @@
 
 <style>
   :root{
-    --bg: #333;
-    --ink: #f4f5f0;
-    --line: #f4f5f0;
-    --hover-bg: #ff82dd;
+    --bg: #cdb789;
+    --ink: #f3e8c8;
+    --line: #3d2b1f;
+    --hover-bg: #8a4a4a;
   }
 
   *{ box-sizing: border-box; }
@@ -38,19 +36,6 @@
     background: var(--bg);
     color: var(--ink);
     font-family: 'Noto Sans KR', sans-serif;
-
-    /* ============================================
-       커스텀 마우스 커서 삽입 코드
-       ============================================
-       커서 이미지 파일이 생기면 아래처럼 교체:
-       cursor: url('cursor.png') 4 4, auto;
-       지금은 기본 커서를 유지하되, 교체 지점만 남겨둠.
-    */
-    cursor: url('cursor.png') 4 4, auto;
-  }
-
-  a, button, .link-item, .add-btn{
-    cursor: url('cursor.png') 4 4, auto; /* 클릭 가능한 요소는 커서 파일 준비되면 url()로 교체 */
   }
 
   .app{
@@ -91,7 +76,7 @@
   }
   .add-btn:hover{
     background: var(--ink);
-    color: #ff82dd;
+    color: #8a4a4a;
   }
 
   .site-title{
@@ -100,9 +85,8 @@
     text-decoration: underline;
     text-underline-offset: 1px;
     white-space: nowrap;
-    cursor: url('cursor.png') 4 4, pointer; /* 클릭 시 시작 화면으로 복귀 - 커스텀 커서 유지 */
   }
-  .site-title:hover{ color: #ff82dd; }
+  .site-title:hover{ color: #8a4a4a; }
 
   .link-list{
     display:flex;
@@ -132,7 +116,7 @@
     padding: 4px 3px;
     border: 1px solid var(--line);
     border-radius: 4px;
-    background: #a42bc2;
+    background: #4c6b4f;
     text-align: center;
     transition: background .15s;
   }
@@ -188,11 +172,6 @@
   .viewer-body{
     flex:1;
     position:relative;
-    /* --- 배경 이미지 설정 추가 --- */
-    background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('bg.png');
-    background-size: auto 100%;    /* 세로 기준 꽉 차게, 가로는 자름 */
-    background-position: center;   /* 정중앙 배치 */
-    background-repeat: no-repeat;  /* 반복 없음 */
   }
 
   .viewer-body iframe{
@@ -207,7 +186,7 @@
     display:flex;
     align-items:center;
     justify-content:center;
-    color:#ff82dd;
+    color:#8a4a4a;
     font-size: 14px;
     text-align:center;
     padding: 20px;
@@ -226,7 +205,7 @@
   .modal-overlay.open{ display:flex; }
 
   .modal{
-    background:#ff82dd;
+    background:#8a4a4a;
     width: 320px;
     padding: 20px;
     display:flex;
@@ -263,7 +242,7 @@
 
   .modal-actions .primary{
     background: var(--ink);
-    color:#ff82dd;
+    color:#8a4a4a;
     border-color: var(--ink);
   }
 
@@ -274,7 +253,7 @@
 <div class="app">
   <aside class="sidebar">
     <button class="add-btn" id="addBtn">+</button>
-    <div class="site-title" id="siteTitle">💜HERB💜</div>
+    <div class="site-title" id="siteTitle">🍥HERB🍥</div>
 
     <div class="link-list" id="linkList">
       <!-- 링크 항목이 JS로 렌더링됨 -->
@@ -466,175 +445,6 @@ onSnapshot(query(linksCol, orderBy('createdAt', 'asc')), (snapshot) => {
 
 </script>
 
-<!-- ============================================
-     Blue Mouse Sparkles 효과
-     (c) 2005 mf2fm web-design — http://www.mf2fm.com/rv
-     아래 스크립트는 수정하지 말고 그대로 유지할 것
-     ============================================ -->
-<script type="text/javascript">
-var colour="#ffb5d1";
-var sparkles=120;
-
-var x=ox=400;
-var y=oy=300;
-var swide=800;
-var shigh=600;
-var sleft=sdown=0;
-var tiny=new Array();
-var star=new Array();
-var starv=new Array();
-var starx=new Array();
-var stary=new Array();
-var tinyx=new Array();
-var tinyy=new Array();
-var tinyv=new Array();
-
-window.onload=function() { if (document.getElementById) {
-  var i, rats, rlef, rdow;
-  for (var i=0; i<sparkles; i++) {
-    var rats=createDiv(3, 3);
-    rats.style.visibility="hidden";
-    document.body.appendChild(tiny[i]=rats);
-    starv[i]=0;
-    tinyv[i]=0;
-    var rats=createDiv(5, 5);
-    rats.style.backgroundColor="transparent";
-    rats.style.visibility="hidden";
-    var rlef=createDiv(1, 5);
-    var rdow=createDiv(5, 1);
-    rats.appendChild(rlef);
-    rats.appendChild(rdow);
-    rlef.style.top="2px";
-    rlef.style.left="0px";
-    rdow.style.top="0px";
-    rdow.style.left="2px";
-    document.body.appendChild(star[i]=rats);
-  }
-  set_width();
-  sparkle();
-}}
-
-function sparkle() {
-  var c;
-  if (x!=ox || y!=oy) {
-    ox=x;
-    oy=y;
-    for (c=0; c<sparkles; c++) if (!starv[c]) {
-      star[c].style.left=(starx[c]=x)+"px";
-      star[c].style.top=(stary[c]=y)+"px";
-      star[c].style.clip="rect(0px, 5px, 5px, 0px)";
-      star[c].style.visibility="visible";
-      starv[c]=50;
-      break;
-    }
-  }
-  for (c=0; c<sparkles; c++) {
-    if (starv[c]) update_star(c);
-    if (tinyv[c]) update_tiny(c);
-  }
-  setTimeout("sparkle()", 40);
-}
-
-function update_star(i) {
-  if (--starv[i]==25) star[i].style.clip="rect(1px, 4px, 4px, 1px)";
-  if (starv[i]) {
-    stary[i]+=1+Math.random()*3;
-    if (stary[i]<shigh+sdown) {
-      star[i].style.top=stary[i]+"px";
-      starx[i]+=(i%5-2)/5;
-      star[i].style.left=starx[i]+"px";
-    }
-    else {
-      star[i].style.visibility="hidden";
-      starv[i]=0;
-      return;
-    }
-  }
-  else {
-    tinyv[i]=50;
-    tiny[i].style.top=(tinyy[i]=stary[i])+"px";
-    tiny[i].style.left=(tinyx[i]=starx[i])+"px";
-    tiny[i].style.width="2px";
-    tiny[i].style.height="2px";
-    star[i].style.visibility="hidden";
-    tiny[i].style.visibility="visible"
-  }
-}
-
-function update_tiny(i) {
-  if (--tinyv[i]==25) {
-    tiny[i].style.width="1px";
-    tiny[i].style.height="1px";
-  }
-  if (tinyv[i]) {
-    tinyy[i]+=1+Math.random()*3;
-    if (tinyy[i]<shigh+sdown) {
-      tiny[i].style.top=tinyy[i]+"px";
-      tinyx[i]+=(i%5-2)/5;
-      tiny[i].style.left=tinyx[i]+"px";
-    }
-    else {
-      tiny[i].style.visibility="hidden";
-      tinyv[i]=0;
-      return;
-    }
-  }
-  else tiny[i].style.visibility="hidden";
-}
-
-document.onmousemove=mouse;
-function mouse(e) {
-  set_scroll();
-  y=(e)?e.pageY:event.y+sdown;
-  x=(e)?e.pageX:event.x+sleft;
-}
-
-function set_scroll() {
-  if (typeof(self.pageYOffset)=="number") {
-    sdown=self.pageYOffset;
-    sleft=self.pageXOffset;
-  }
-  else if (document.body.scrollTop || document.body.scrollLeft) {
-    sdown=document.body.scrollTop;
-    sleft=document.body.scrollLeft;
-  }
-  else if (document.documentElement && (document.documentElement.scrollTop || document.documentElement.scrollLeft)) {
-    sleft=document.documentElement.scrollLeft;
-	sdown=document.documentElement.scrollTop;
-  }
-  else {
-    sdown=0;
-    sleft=0;
-  }
-}
-
-window.onresize=set_width;
-function set_width() {
-  if (typeof(self.innerWidth)=="number") {
-    swide=self.innerWidth;
-    shigh=self.innerHeight;
-  }
-  else if (document.documentElement && document.documentElement.clientWidth) {
-    swide=document.documentElement.clientWidth;
-    shigh=document.documentElement.clientHeight;
-  }
-  else if (document.body.clientWidth) {
-    swide=document.body.clientWidth;
-    shigh=document.body.clientHeight;
-  }
-}
-
-function createDiv(height, width) {
-  var div=document.createElement("div");
-  div.style.position="absolute";
-  div.style.top="0px";
-  div.style.left="0px";
-  div.style.height=height+"px";
-  div.style.width=width+"px";
-  div.style.overflow="hidden";
-  div.style.backgroundColor=colour;
-  return (div);
-}
 </script>
 
 </body>
