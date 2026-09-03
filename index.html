@@ -246,6 +246,29 @@
     border-color: var(--ink);
   }
 
+    /* ---------- 임시 메모장 ---------- */
+    .memo-box{
+    position:absolute;
+    top: 40px;
+    left: 40px;
+    width: 560px;
+    height: 400px;
+    min-width: 220px;
+    min-height: 120px;
+    max-width: 90%;
+    max-height: 85%;
+    resize: both; /* 우측 하단을 드래그해서 크기 조절 */
+    overflow: auto;
+    padding: 16px;
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,.92);
+    color: #151515;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .memo-box:focus{ outline: 2px solid #4c6b4f; }
+
 </style>
 </head>
 <body>
@@ -266,6 +289,7 @@
       <a class="open-new-tab" id="openNewTab" target="_blank" rel="noopener">🔑new tap</a>
     </div>
     <div class="viewer-body">
+      <textarea id="memoBox" class="memo-box" placeholder="무슨 일이 일어나고 있나요?" spellcheck="false"></textarea>
       <iframe id="viewerFrame" style="display:none;"></iframe>
     </div>
   </main>
