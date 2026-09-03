@@ -105,7 +105,25 @@
     width: 52px;
     font-family: 'Noto Sans KR', sans-serif; /* 가독성을 위해 Noto Sans 사용 */
     font-size: 9px;
+    transition: transform .12s ease;
   }
+
+  .link-item.dragging{
+    opacity: .35;
+  }
+
+  .link-item.drag-over-top::before,
+  .link-item.drag-over-bottom::after{
+    content:"";
+    position:absolute;
+    left:0;
+    right:0;
+    height:2px;
+    background: var(--ink);
+    border-radius: 2px;
+  }
+  .link-item.drag-over-top::before{ top: -8px; }
+  .link-item.drag-over-bottom::after{ bottom: -8px; }
 
   .link-name{
     display:block;
@@ -119,8 +137,11 @@
     background: #4c6b4f;
     text-align: center;
     transition: background .15s;
+    cursor: grab;
+    user-select: none;
   }
   .link-name:hover{ background: var(--hover-bg); }
+  .link-item.dragging .link-name{ cursor: grabbing; }
 
   .link-actions{
     position: absolute;
@@ -321,7 +342,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
 import {
   getFirestore, collection, addDoc, doc, updateDoc, deleteDoc,
-  onSnapshot, query, orderBy, serverTimestamp
+  onSnapshot, query, orderBy, serverTimestamp, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -340,6 +361,7 @@ const linksCol = collection(db, 'herbLinks');
 
 let links = [];
 let editingId = null;
+let draggedId = null;
 
 const linkListEl = document.getElementById('linkList');
 const modalOverlay = document.getElementById('modalOverlay');
@@ -362,6 +384,44 @@ function renderLinks(){
   links.forEach(link => {
     const item = document.createElement('div');
     item.className = 'link-item';
+    item.draggable = true;
+    item.dataset.id = link.id;
+
+    item.addEventListener('dragstart', (e) => {
+      draggedId = link.id;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', link.id);
+    });
+
+    item.addEventListener('dragend', () => {
+      draggedId = null;
+      document.querySelectorAll('.link-item').forEach(el => {
+        el.classList.remove('dragging', 'drag-over-top', 'drag-over-bottom');
+      });
+    });
+
+    item.addEventListener('dragover', (e) => {
+      if(!draggedId || draggedId === link.id) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const rect = item.getBoundingClientRect();
+      const before = (e.clientY - rect.top) < rect.height / 2;
+      item.classList.toggle('drag-over-top', before);
+      item.classList.toggle('drag-over-bottom', !before);
+    });
+
+    item.addEventListener('dragleave', () => {
+      item.classList.remove('drag-over-top', 'drag-over-bottom');
+    });
+
+    item.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const before = item.classList.contains('drag-over-top');
+      item.classList.remove('drag-over-top', 'drag-over-bottom');
+      if(!draggedId || draggedId === link.id) return;
+      reorderLinks(draggedId, link.id, before);
+    });
 
     const nameSpan = document.createElement('span');
     nameSpan.className = 'link-name';
@@ -390,6 +450,36 @@ function renderLinks(){
     item.appendChild(actions);
     linkListEl.appendChild(item);
   });
+}
+
+function reorderLinks(fromId, toId, insertBefore){
+  const fromIndex = links.findIndex(l => l.id === fromId);
+  let toIndex = links.findIndex(l => l.id === toId);
+  if(fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return;
+
+  const newLinks = [...links];
+  const [moved] = newLinks.splice(fromIndex, 1);
+
+  // splice로 인덱스가 밀렸을 수 있으므로 다시 계산
+  toIndex = newLinks.findIndex(l => l.id === toId);
+  const insertAt = insertBefore ? toIndex : toIndex + 1;
+  newLinks.splice(insertAt, 0, moved);
+
+  links = newLinks;
+  renderLinks(); // Firestore 응답을 기다리지 않고 즉시 화면 갱신
+  persistOrder(newLinks);
+}
+
+async function persistOrder(orderedLinks){
+  try{
+    const batch = writeBatch(db);
+    orderedLinks.forEach((link, index) => {
+      batch.update(doc(db, 'herbLinks', link.id), { order: index });
+    });
+    await batch.commit();
+  }catch(err){
+    console.error('순서 저장 오류:', err);
+  }
 }
 
 function openLink(link){
@@ -448,7 +538,7 @@ function saveModal(){
     updateDoc(doc(db, 'herbLinks', editingId), { name, url })
       .catch(err => console.error('수정 오류:', err));
   }else{
-    addDoc(linksCol, { name, url, createdAt: serverTimestamp() })
+    addDoc(linksCol, { name, url, order: links.length, createdAt: serverTimestamp() })
       .catch(err => console.error('추가 오류:', err));
   }
 
@@ -464,7 +554,15 @@ modalOverlay.addEventListener('click', (e) => { if(e.target === modalOverlay) cl
 
 // Firestore 실시간 구독: 추가/수정/삭제가 일어나면 모든 기기에 자동 반영됨
 onSnapshot(query(linksCol, orderBy('createdAt', 'asc')), (snapshot) => {
-  links = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  const fetched = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  // order 필드가 있는 항목은 그 값으로, 없는 항목(기존 데이터)은
+  // createdAt 순서를 유지한 채 맨 뒤로 안정 정렬됨.
+  fetched.sort((a, b) => {
+    const ao = typeof a.order === 'number' ? a.order : Number.MAX_SAFE_INTEGER;
+    const bo = typeof b.order === 'number' ? b.order : Number.MAX_SAFE_INTEGER;
+    return ao - bo;
+  });
+  links = fetched;
   renderLinks();
 }, (error) => {
   console.error('Firestore 구독 오류:', error);
