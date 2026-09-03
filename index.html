@@ -349,6 +349,7 @@ const urlInput = document.getElementById('urlInput');
 const viewerFrame = document.getElementById('viewerFrame');
 const openNewTab = document.getElementById('openNewTab');
 const siteTitle = document.getElementById('siteTitle');
+const memoBox = document.getElementById('memoBox');
 
 function normalizeUrl(url){
   if(!/^https?:\/\//i.test(url)) return 'https://' + url;
@@ -393,6 +394,7 @@ function renderLinks(){
 
 function openLink(link){
   const url = normalizeUrl(link.url);
+  memoBox.style.display = 'none';
   viewerFrame.style.display = 'block';
   viewerFrame.src = url;
   openNewTab.href = url;
@@ -403,6 +405,7 @@ function goToStart(){
   viewerFrame.src = 'about:blank'; // 로딩 중이던 페이지 리소스도 정리
   viewerFrame.style.display = 'none';
   openNewTab.style.display = 'none';
+  memoBox.style.display = 'block';
 }
 
 function deleteLink(id, name){
@@ -466,8 +469,6 @@ onSnapshot(query(linksCol, orderBy('createdAt', 'asc')), (snapshot) => {
 }, (error) => {
   console.error('Firestore 구독 오류:', error);
 });
-
-</script>
 
 </script>
 
