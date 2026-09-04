@@ -20,10 +20,15 @@
 
 <style>
   :root{
-    --bg: #cdb789;
-    --ink: #f3e8c8;
-    --line: #3d2b1f;
-    --hover-bg: #8a4a4a;
+    --bg: #9bbc0f;
+    --ink: #0f380f;
+    --line: #0f380f;
+    --hover-bg: #8bac0f;
+    --brand: #0f380f;
+    --brand-12: #8bac0f;
+    --brand-25: #8bac0f;
+    --font-kr: 'Noto Sans KR', sans-serif;
+    --font-pixel: 'Cherry Bomb One', monospace;
   }
 
   *{ box-sizing: border-box; }
@@ -76,7 +81,7 @@
   }
   .add-btn:hover{
     background: var(--ink);
-    color: #8a4a4a;
+    color: #8bac0f;
   }
 
   .site-title{
@@ -86,7 +91,7 @@
     text-underline-offset: 1px;
     white-space: nowrap;
   }
-  .site-title:hover{ color: #8a4a4a; }
+  .site-title:hover{ color: #8bac0f; }
 
   .link-list{
     display:flex;
@@ -134,7 +139,7 @@
     padding: 4px 3px;
     border: 1px solid var(--line);
     border-radius: 4px;
-    background: #4c6b4f;
+    background: #8bac0f;
     text-align: center;
     transition: background .15s;
     cursor: grab;
@@ -207,7 +212,7 @@
     display:flex;
     align-items:center;
     justify-content:center;
-    color:#8a4a4a;
+    color:#8bac0f;
     font-size: 14px;
     text-align:center;
     padding: 20px;
@@ -217,7 +222,7 @@
   .modal-overlay{
     position:fixed;
     inset:0;
-    background: rgba(0,0,0,.35);
+    background: #0f380f;
     display:none;
     align-items:center;
     justify-content:center;
@@ -226,7 +231,7 @@
   .modal-overlay.open{ display:flex; }
 
   .modal{
-    background:#8a4a4a;
+    background:#8bac0f;
     width: 320px;
     padding: 20px;
     display:flex;
@@ -237,12 +242,12 @@
   .modal h3{
     margin:0;
     font-size: 16px;
-    color:#151515;
+    color:#0f380f;
   }
 
   .modal input{
     padding: 8px;
-    border: 1px solid #151515;
+    border: 1px solid #0f380f;
     font-family: 'Noto Sans KR', sans-serif;
     font-size: 13px;
   }
@@ -263,7 +268,7 @@
 
   .modal-actions .primary{
     background: var(--ink);
-    color:#8a4a4a;
+    color:#8bac0f;
     border-color: var(--ink);
   }
 
@@ -282,13 +287,94 @@
     overflow: auto;
     padding: 16px;
     border: 1px solid var(--line);
-    background: #f3e8c8;
-    color: #151515;
+    background: #8bac0f;
+    color: #0f380f;
     font-family: 'Noto Sans KR', sans-serif;
     font-size: 14px;
     line-height: 1.6;
   }
-  .memo-box:focus{ outline: 2px solid #4c6b4f; }
+  .memo-box:focus{ outline: 2px solid #0f380f; }
+
+    /* ---------- youtube player bar ---------- */
+  .topbar-actions{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+
+  .btn-icon{
+    background:none;
+    border:none;
+    color:var(--brand);
+    width:20px;
+    height:20px;
+    flex-shrink:0;
+    font-size:.8rem;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    box-shadow: none;
+  }
+  .btn-icon:hover{ background:var(--brand-12); }
+  .btn-icon:active{ transform:translateY(1px); }
+
+  #ytPlayerHolder{
+    position:absolute;
+    width:1px;
+    height:1px;
+    overflow:hidden;
+    opacity:0;
+    pointer-events:none;
+  }
+
+  /* ---------- playlist ---------- */
+  .playlist-list{
+    list-style:none;
+    margin:16px 0 0;
+    padding:8px 0 0;
+    max-height:220px;
+    overflow-y:auto;
+    border-top:1px solid var(--brand-25);
+  }
+  .playlist-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:9px 2px;
+    border-bottom:1px solid var(--brand-12);
+  }
+  .playlist-title{
+    flex:1;
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-family:var(--font-kr);
+    font-size:.78rem;
+  }
+  .playlist-del{
+    flex-shrink:0;
+    background:none;
+    border:1px solid #0f380f;
+    color:#0f380f;
+    width:24px;
+    height:24px;
+    font-size:.68rem;
+    line-height:1;
+    cursor:pointer;
+  }
+  .playlist-del:hover{ background:#8bac0f; }
+
+  .playlist-empty{
+    text-align:center;
+    padding:16px 4px;
+    opacity:.65;
+    font-family:var(--font-pixel);
+    font-size:.62rem;
+    letter-spacing:.02em;
+  }
 
 </style>
 </head>
@@ -296,8 +382,33 @@
 
 <div class="app">
   <aside class="sidebar">
+    <!-- 유튜브 플레이어 (숨김, 오디오 재생용) -->
+<div id="ytPlayerHolder"><div id="ytPlayer"></div></div>
+
+<!-- 유튜브 플레이리스트 모달 -->
+<div class="modal-overlay" id="playlistModalOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="playlistModalTitle">
+    <div class="modal-head">
+      <h2 id="playlistModalTitle">PLAYLIST</h2>
+      <button class="modal-close" id="closePlaylistModal" type="button" aria-label="닫기">×</button>
+    </div>
+    <form id="playlistForm">
+      <label class="field">
+        <span>유튜브 링크</span>
+        <input type="url" id="youtubeUrlInput" placeholder="https://www.youtube.com/watch?v=..." />
+      </label>
+      <p class="form-hint" id="playlistFormHint"></p>
+      <button type="submit" class="btn-submit" id="playlistSubmitBtn">추가 &gt;&gt;</button>
+    </form>
+    <ul class="playlist-list" id="playlistList">
+      <li class="playlist-empty" id="playlistEmpty">등록된 곡이 없습니다.</li>
+    </ul>
+  </div>
+</div>
+        <button type="button" class="btn-icon" id="ytToggleBtn" title="재생 / 일시정지">▶</button>
+        <button type="button" class="btn-icon" id="openPlaylistBtn" title="플레이리스트">🎵</button>
     <button class="add-btn" id="addBtn">+</button>
-    <div class="site-title" id="siteTitle">🍥HERB🍥</div>
+    <div class="site-title" id="siteTitle">💣HERB</div>
 
     <div class="link-list" id="linkList">
       <!-- 링크 항목이 JS로 렌더링됨 -->
@@ -306,7 +417,10 @@
   </aside>
 
   <main class="viewer">
-    <div class="viewer-bar">
+    <div class="viewer-bar" style="display:flex; align-items:center; gap:8px; padding:6px 8px;">
+      <div class="topbar-actions">
+
+      </div>
       <a class="open-new-tab" id="openNewTab" target="_blank" rel="noopener">🔑new tap</a>
     </div>
     <div class="viewer-body">
@@ -342,7 +456,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
 import {
   getFirestore, collection, addDoc, doc, updateDoc, deleteDoc,
-  onSnapshot, query, orderBy, serverTimestamp, writeBatch
+  onSnapshot, query, orderBy, limit, serverTimestamp, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -372,6 +486,26 @@ const viewerFrame = document.getElementById('viewerFrame');
 const openNewTab = document.getElementById('openNewTab');
 const siteTitle = document.getElementById('siteTitle');
 const memoBox = document.getElementById('memoBox');
+
+  // ---------------- youtube player refs ----------------
+  const ytToggleBtn = document.getElementById("ytToggleBtn");
+  const openPlaylistBtn = document.getElementById("openPlaylistBtn");
+  const playlistModalOverlay = document.getElementById("playlistModalOverlay");
+  const closePlaylistModal = document.getElementById("closePlaylistModal");
+  const playlistForm = document.getElementById("playlistForm");
+  const youtubeUrlInput = document.getElementById("youtubeUrlInput");
+  const playlistFormHint = document.getElementById("playlistFormHint");
+  const playlistSubmitBtn = document.getElementById("playlistSubmitBtn");
+  const playlistList = document.getElementById("playlistList");
+  const playlistEmpty = document.getElementById("playlistEmpty");
+
+  const PLAYLIST_COLLECTION = "herb_playlist";
+  const playlistCache = new Map();
+  let ytPlayer = null;
+  let ytApiScriptAdded = false;
+  let ytApiCallbacks = [];
+  let playQueue = [];
+  let queueIndex = -1;
 
 function normalizeUrl(url){
   if(!/^https?:\/\//i.test(url)) return 'https://' + url;
@@ -567,6 +701,235 @@ onSnapshot(query(linksCol, orderBy('createdAt', 'asc')), (snapshot) => {
 }, (error) => {
   console.error('Firestore 구독 오류:', error);
 });
+
+  // ================= 유튜브 플레이어 / 플레이리스트 =================
+
+  // ---------------- youtube iframe api 로드 ----------------
+  function ensureYtApi(callback){
+    if (window.YT && window.YT.Player) { callback(); return; }
+    ytApiCallbacks.push(callback);
+    if (!ytApiScriptAdded) {
+      ytApiScriptAdded = true;
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.head.appendChild(tag);
+      window.onYouTubeIframeAPIReady = function () {
+        const callbacks = ytApiCallbacks;
+        ytApiCallbacks = [];
+        callbacks.forEach((fn) => fn());
+      };
+    }
+  }
+
+  // ---------------- 링크 파싱 / 제목 조회 ----------------
+  function extractYoutubeId(url){
+    if (!url) return null;
+    const patterns = [
+      /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
+      /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/
+    ];
+    for (const p of patterns) {
+      const m = url.match(p);
+      if (m) return m[1];
+    }
+    return null;
+  }
+
+  async function fetchYoutubeTitle(url){
+    try {
+      const res = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+      if (!res.ok) throw new Error("oEmbed 요청 실패");
+      const data = await res.json();
+      return data.title || "";
+    } catch (err) {
+      console.warn("유튜브 제목 조회 실패:", err);
+      return "";
+    }
+  }
+
+  // ---------------- 랜덤 재생 큐 ----------------
+  function shuffleArray(arr){
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function buildQueue(){
+    return shuffleArray(Array.from(playlistCache.keys()));
+  }
+
+  function setToggleIcon(playing){
+    ytToggleBtn.textContent = playing ? "⏸" : "▶";
+  }
+
+  function startPlayback(){
+    if (playlistCache.size === 0) {
+      alert("재생목록이 비어 있습니다. 먼저 유튜브 링크를 추가해주세요.");
+      return;
+    }
+    ensureYtApi(() => {
+      if (!ytPlayer) {
+        playQueue = buildQueue();
+        queueIndex = 0;
+        const firstId = playlistCache.get(playQueue[queueIndex]).videoId;
+        ytPlayer = new YT.Player("ytPlayer", {
+          videoId: firstId,
+          playerVars: { autoplay: 1, controls: 0 },
+          events: {
+            onReady: (e) => e.target.playVideo(),
+            onStateChange: onPlayerStateChange
+          }
+        });
+      } else {
+        ytPlayer.playVideo();
+      }
+    });
+  }
+
+  function togglePlayback(){
+    if (ytPlayer && typeof ytPlayer.getPlayerState === "function") {
+      const state = ytPlayer.getPlayerState();
+      if (state === YT.PlayerState.PLAYING) {
+        ytPlayer.pauseVideo();
+        return;
+      }
+    }
+    startPlayback();
+  }
+
+  function onPlayerStateChange(e){
+    if (e.data === YT.PlayerState.PLAYING) {
+      setToggleIcon(true);
+    } else if (e.data === YT.PlayerState.PAUSED) {
+      setToggleIcon(false);
+    } else if (e.data === YT.PlayerState.ENDED) {
+      playNext();
+    }
+  }
+
+  function playNext(){
+    if (playlistCache.size === 0) {
+      setToggleIcon(false);
+      return;
+    }
+    queueIndex++;
+    if (queueIndex >= playQueue.length || !playlistCache.has(playQueue[queueIndex])) {
+      playQueue = buildQueue();
+      queueIndex = 0;
+    }
+    const nextItem = playlistCache.get(playQueue[queueIndex]);
+    if (!nextItem) {
+      setToggleIcon(false);
+      return;
+    }
+    ytPlayer.loadVideoById(nextItem.videoId);
+  }
+
+  ytToggleBtn.addEventListener("click", togglePlayback);
+  listenToPlaylist();
+
+  // ---------------- 플레이리스트 모달 ----------------
+  openPlaylistBtn.addEventListener("click", () => {
+    youtubeUrlInput.value = "";
+    playlistFormHint.textContent = "";
+    openModal(playlistModalOverlay);
+  });
+  closePlaylistModal.addEventListener("click", () => closeModalFn(playlistModalOverlay));
+  playlistModalOverlay.addEventListener("click", (e) => {
+    if (e.target === playlistModalOverlay) closeModalFn(playlistModalOverlay);
+  });
+
+  playlistForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const raw = youtubeUrlInput.value.trim();
+    const videoId = extractYoutubeId(raw);
+    if (!videoId) {
+      playlistFormHint.textContent = "유효한 유튜브 링크가 아닙니다.";
+      return;
+    }
+    playlistSubmitBtn.disabled = true;
+    playlistFormHint.textContent = "추가 중...";
+    try {
+      const normalizedUrl = `https://www.youtube.com/watch?v=${videoId}`;
+      const title = await fetchYoutubeTitle(normalizedUrl);
+      await addDoc(collection(db, PLAYLIST_COLLECTION), {
+        videoId,
+        title: title || normalizedUrl,
+        url: normalizedUrl,
+        createdAt: serverTimestamp()
+      });
+      youtubeUrlInput.value = "";
+      playlistFormHint.textContent = "";
+    } catch (err) {
+      console.error(err);
+      playlistFormHint.textContent = "추가 중 오류가 발생했습니다.";
+    } finally {
+      playlistSubmitBtn.disabled = false;
+    }
+  });
+
+  function listenToPlaylist(){
+    const q = query(collection(db, PLAYLIST_COLLECTION), orderBy("createdAt", "desc"), limit(200));
+    onSnapshot(
+      q,
+      (snapshot) => {
+        playlistCache.clear();
+        snapshot.docs.forEach((d) => playlistCache.set(d.id, { id: d.id, ...d.data() }));
+        renderPlaylist();
+      },
+      (err) => console.error(err)
+    );
+  }
+
+  function renderPlaylist(){
+    playlistList.querySelectorAll(".playlist-item").forEach((el) => el.remove());
+    playlistEmpty.style.display = playlistCache.size ? "none" : "block";
+    playlistCache.forEach((item) => {
+      const li = document.createElement("li");
+      li.className = "playlist-item";
+
+      const span = document.createElement("span");
+      span.className = "playlist-title";
+      span.textContent = item.title || item.url || item.videoId;
+
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "playlist-del";
+      delBtn.textContent = "✕";
+      delBtn.addEventListener("click", () => deletePlaylistItem(item.id));
+
+      li.appendChild(span);
+      li.appendChild(delBtn);
+      playlistList.appendChild(li);
+    });
+  }
+
+  async function deletePlaylistItem(id){
+    const item = playlistCache.get(id);
+    const label = item && item.title ? item.title : "이 곡";
+    const ok = window.confirm(`"${label}"을(를) 삭제하시겠습니까?`);
+    if (!ok) return;
+    try {
+      await deleteDoc(doc(db, PLAYLIST_COLLECTION, id));
+      if (item) {
+        playQueue = playQueue.filter((vid) => vid !== item.id);
+        if (ytPlayer && typeof ytPlayer.getVideoData === "function") {
+          const current = ytPlayer.getVideoData();
+          if (current && current.video_id === item.videoId) {
+            playNext();
+          }
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      alert("삭제 중 오류가 발생했습니다.");
+    }
+  }
 
 </script>
 
