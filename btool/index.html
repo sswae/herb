@@ -235,8 +235,7 @@ a, button, .link-item, .add-btn{
     box-shadow: inset 1px 1px 0 var(--line-hi), inset -1px -1px 0 var(--line-lo);
     display:flex;
     flex-direction:column;
-    flex:1 1 auto;
-    min-height:300px;
+    flex: 0 0 auto; /* 바깥 .content 스크롤에 맡기고, 콘텐츠 높이만큼만 차지 */
   }
   .subwin-bar{
     flex:0 0 auto;
@@ -251,11 +250,9 @@ a, button, .link-item, .add-btn{
     border-bottom:1px solid var(--win-border);
   }
   .subwin-body{
-    flex:1 1 auto;
-    min-height:0;
+    flex: 0 0 auto;
     display:flex;
     flex-direction:column;
-    overflow:hidden;
   }
 
   /* 최신 이미지 영역과 그 외 이미지 영역을 완전히 분리 */
@@ -266,12 +263,10 @@ a, button, .link-item, .add-btn{
     border-bottom:2px solid var(--win-border);
   }
   .grid-wrap{
-    flex:1 1 auto;
-    min-height:0;
+    flex: 0 0 auto;
     background:var(--win-bg-light);
     display:flex;
     flex-direction:column;
-    overflow:hidden;
   }
 
   .feature-slot{
@@ -299,19 +294,11 @@ a, button, .link-item, .add-btn{
   }
 
   .thumb-grid{
-    flex:1 1 auto;
-    min-height:0;
-    overflow-y:auto;
+    flex: 0 0 auto; /* 내부 스크롤 제거: 전체 높이만큼 자연스럽게 늘어나고, 바깥 .content가 스크롤함 */
     display:grid;
     grid-template-columns:repeat(auto-fill,minmax(90px,1fr));
     gap:8px;
     padding:10px;
-  }
-  .thumb-grid::-webkit-scrollbar{ width:15px; }
-  .thumb-grid::-webkit-scrollbar-track{ background:var(--sunken); }
-  .thumb-grid::-webkit-scrollbar-thumb{
-    background:var(--btn-face); border:1px solid var(--win-border);
-    box-shadow: inset 1px 1px 0 var(--line-hi), inset -1px -1px 0 var(--line-lo);
   }
   .thumb{
     aspect-ratio:1/1;
