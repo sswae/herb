@@ -674,10 +674,8 @@ function renderFeature(){
     slot.appendChild(overlay);
   }
   slot.onclick = () => {
-    if (top.mature){
-      // 마우스 클릭으로 블러 on/off 토글 (풀려있으면 다시 블러 처리)
-      if (revealedIds.has(top.id)) revealedIds.delete(top.id);
-      else revealedIds.add(top.id);
+    if (top.mature && !revealedIds.has(top.id)){
+      revealedIds.add(top.id);
       renderFeature();
     } else {
       openModal(top.url);
@@ -710,10 +708,8 @@ function renderThumbs(){
       cell.appendChild(overlay);
     }
     cell.addEventListener('click', () => {
-      if (p.mature){
-        // 마우스 클릭으로 블러 on/off 토글 (풀려있으면 다시 블러 처리)
-        if (revealedIds.has(p.id)) revealedIds.delete(p.id);
-        else revealedIds.add(p.id);
+      if (p.mature && !revealedIds.has(p.id)){
+        revealedIds.add(p.id);
         renderThumbs();
       } else {
         openModal(p.url);
@@ -881,10 +877,12 @@ function openCtxMenu(e, item, type){
   const matureLabel = type === 'post'
     ? (item.mature ? '🔐' : '🔞')
     : null;
+  const showReblur = type === 'post' && item.mature && revealedIds.has(item.id);
 
   ctxMenu.innerHTML = `
     <button data-act="replace">edit</button>
     ${type === 'post' ? `<button data-act="mature">${matureLabel}</button>` : ''}
+    ${showReblur ? `<button data-act="reblur">🌫️re-blur</button>` : ''}
     <div class="sep"></div>
     <button data-act="delete">❌</button>
   `;
@@ -905,6 +903,13 @@ ctxMenu.addEventListener('click', async (e) => {
 
   if (act === 'mature'){
     await db.collection(COL_POSTS).doc(item.id).update({ mature: !item.mature });
+    return;
+  }
+
+  if (act === 'reblur'){
+    revealedIds.delete(item.id);
+    renderFeature();
+    renderThumbs();
     return;
   }
 
