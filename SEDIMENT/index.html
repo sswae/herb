@@ -1084,7 +1084,7 @@
     <div class="viewer-topbar">
       <div class="viewer-breadcrumb en" id="viewer-breadcrumb">—</div>
       <div class="viewer-actions">
-        <button onclick="showScreen('index')">BACK</button>
+        <button onclick="goBack()">BACK</button>
         <div style="display:flex;gap:16px;">
           <button onclick="deleteEpisode()" style="color:var(--ink-60);">DELETE</button>
           <button onclick="editCurrent()">EDIT</button>
@@ -1136,7 +1136,7 @@
   <!-- ══ WRITE ══ -->
   <div id="screen-write">
     <div class="write-top">
-      <button onclick="showScreen('index')">← BACK</button>
+      <button onclick="goBack()">← BACK</button>
     </div>
 
     <div class="board-select-wrap">
@@ -1181,7 +1181,7 @@
   <div id="screen-timeline">
     <div class="tl-topbar">
       <div class="tl-topbar-left">
-        <button onclick="showScreen('index')">INDEX</button>
+        <button onclick="goBack()">INDEX</button>
       </div>
       <button class="tl-add-btn" onclick="openTlWrite()">+</button>
     </div>
@@ -1206,7 +1206,7 @@
   <!-- ══ TL-WRITE ══ -->
   <div id="screen-tl-write">
     <div class="tl-write-top">
-      <button onclick="showScreen('timeline')">← BACK</button>
+      <button onclick="goBack()">← BACK</button>
     </div>
 
     <!-- 타임라인 선택 or 신규 -->
@@ -1251,8 +1251,11 @@
 
 <!-- ══ 전역 스크립트 ══ -->
 <script>
-  /* ─── 화면 전환 ─── */
-  function showScreen(name) {
+  /* ─── 화면 전환 (히스토리 연동: 뒤로가기 시 앱 밖으로 안 나가고 이전 화면으로) ─── */
+  let _currentScreenName = 'index';
+
+  function showScreen(name, opts = {}) {
+    const { fromPopstate = false, replace = false } = opts;
     const screens = ['index','viewer','write','timeline','tl-write'];
     screens.forEach(s => {
       const el = document.getElementById('screen-' + s);
@@ -1264,6 +1267,27 @@
     if (name === 'index'    && window._refreshBoards) window._refreshBoards();
     if (name === 'timeline' && window._refreshTimeline) window._refreshTimeline();
     if (name !== 'viewer') stopYoutube();
+
+    // popstate(뒤로가기)로 인한 전환이면 히스토리를 다시 건드리지 않음
+    if (!fromPopstate) {
+      if (replace || name === _currentScreenName) {
+        history.replaceState({ screen: name }, '');
+      } else {
+        history.pushState({ screen: name }, '');
+      }
+    }
+    _currentScreenName = name;
+  }
+
+  // 브라우저/제스처 뒤로가기 → 앱 내부의 이전 화면으로 이동
+  window.addEventListener('popstate', (e) => {
+    const screen = (e.state && e.state.screen) || 'index';
+    showScreen(screen, { fromPopstate: true });
+  });
+
+  // 화면 안의 "← BACK" 류 버튼 — 브라우저 뒤로가기와 동일하게 동작시켜 히스토리 스택을 일관되게 유지
+  function goBack() {
+    history.back();
   }
 
   function openWrite() {
@@ -1483,6 +1507,20 @@
   window._downloadMd     = downloadMarkdown;
   window._deleteEpisode  = deleteEpisode;
 
+  /* ── 게시판별 에피소드 캐시 ──
+       같은 게시판 데이터를 화면 전환마다 다시 읽지 않도록 메모리에 보관.
+       저장/삭제로 실제 데이터가 바뀐 게시판만 invalidateBoard()로 캐시를 비움. ── */
+  const _boardCache = new Map();   // boardId -> [{id, ...fields}]
+
+  async function fetchBoardEpisodes(boardId, force = false) {
+    if (!force && _boardCache.has(boardId)) return _boardCache.get(boardId);
+    const snap = await getDocs(collection(db, 'sed_boards', boardId, 'sed_episodes'));
+    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    _boardCache.set(boardId, list);
+    return list;
+  }
+  function invalidateBoard(boardId) { _boardCache.delete(boardId); }
+
   /* ── 정렬 키 계산
        "바위의 귀공자 (2)" → subNum=2
        제목 끝의 (숫자) 패턴을 인식. 없으면 subNum=0
@@ -1523,25 +1561,24 @@
     const el      = document.getElementById('eplist-' + boardId);
     const countEl = document.getElementById('count-' + boardId);
 
-    function sortedDocs(docs) {
-      return docs.slice().sort((a, b) => sortKey(b.data()) - sortKey(a.data()));
+    function sortedList(list) {
+      return list.slice().sort((a, b) => sortKey(b) - sortKey(a));
     }
 
-    function makeEpItem(d) {
-      const ep  = d.data();
+    function makeEpItem(ep) {
       const num = ep.epNum != null ? String(ep.epNum).padStart(2, '0') : '—';
       const a   = document.createElement('a');
       a.className = 'episode-item';
       a.href = '#';
-      a.addEventListener('click', e => { e.preventDefault(); openEpisode(boardId, d.id); });
+      a.addEventListener('click', e => { e.preventDefault(); openEpisode(boardId, ep.id); });
       a.innerHTML = `<span class="ep-label en">EPISODE ${num}.&nbsp;</span>${ep.title ?? ''}`;
       return a;
     }
 
-    function renderDocs(rawDocs) {
-      const docs = sortedDocs(rawDocs);
-      if (countEl) countEl.textContent = docs.length || '0';
-      if (!docs.length) {
+    function renderList(rawList) {
+      const list = sortedList(rawList);
+      if (countEl) countEl.textContent = list.length || '0';
+      if (!list.length) {
         el.innerHTML = '<div class="state-msg" style="text-align:left;padding:4px 0">—</div>';
         return;
       }
@@ -1549,13 +1586,13 @@
 
       // NOTHINGNESS 게시판만: series 필드 기준으로 그룹핑해서 렌더
       if (boardId === 'nothingness') {
-        const groups = new Map(); // key: series ('' = 미지정), value: { docs: [], maxKey }
-        docs.forEach(d => {
-          const key = (d.data().series ?? '').trim();
-          if (!groups.has(key)) groups.set(key, { docs: [], maxKey: -Infinity });
+        const groups = new Map(); // key: series ('' = 미지정), value: { list: [], maxKey }
+        list.forEach(ep => {
+          const key = (ep.series ?? '').trim();
+          if (!groups.has(key)) groups.set(key, { list: [], maxKey: -Infinity });
           const g = groups.get(key);
-          g.docs.push(d);
-          g.maxKey = Math.max(g.maxKey, sortKey(d.data()));
+          g.list.push(ep);
+          g.maxKey = Math.max(g.maxKey, sortKey(ep));
         });
         // 그룹 정렬: 그룹 내 가장 최신(=sortKey 최대) 항목 기준 내림차순
         const orderedGroups = Array.from(groups.entries())
@@ -1568,17 +1605,17 @@
             header.innerHTML = `<span class="series-header-dash">──</span><span class="series-header-text">${seriesName}</span><span class="series-header-dots"></span>`;
             el.appendChild(header);
           }
-          g.docs.forEach(d => el.appendChild(makeEpItem(d)));
+          g.list.forEach(ep => el.appendChild(makeEpItem(ep)));
         });
         return;
       }
 
-      docs.forEach(d => el.appendChild(makeEpItem(d)));
+      list.forEach(ep => el.appendChild(makeEpItem(ep)));
     }
 
     try {
-      const snap = await getDocs(collection(db, 'sed_boards', boardId, 'sed_episodes'));
-      renderDocs(snap.docs);
+      const list = await fetchBoardEpisodes(boardId);
+      renderList(list);
     } catch(e2) {
       if (countEl) countEl.textContent = '?';
       el.innerHTML = `<div class="state-msg" style="text-align:left;padding:4px 0;opacity:.5">연결 오류</div>`;
@@ -1595,15 +1632,17 @@
 
     const board = BOARDS.find(b => b.id === boardId);
 
-    // 같은 게시판 전체 목록 로드 (네비게이션용) — sortKey 내림차순
-    const allSnap = await getDocs(collection(db, 'sed_boards', boardId, 'sed_episodes'));
-    currentEpList = allSnap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .sort((a, b) => sortKey(b) - sortKey(a));
+    // 같은 게시판 목록 로드 (네비게이션용, 캐시 재사용) — sortKey 내림차순
+    let list = await fetchBoardEpisodes(boardId);
+    let ep   = list.find(e => e.id === epId);
+    if (!ep) {
+      // 캐시에 없으면(방금 다른 곳에서 추가된 글 등) 한 번만 강제로 새로 읽음
+      list = await fetchBoardEpisodes(boardId, true);
+      ep   = list.find(e => e.id === epId);
+      if (!ep) return;
+    }
+    currentEpList = list.slice().sort((a, b) => sortKey(b) - sortKey(a));
 
-    const snap = await getDoc(doc(db, 'sed_boards', boardId, 'sed_episodes', epId));
-    if (!snap.exists()) return;
-    const ep  = snap.data();
     const num = ep.epNum != null ? String(ep.epNum).padStart(2,'0') : '';
 
     document.getElementById('viewer-breadcrumb').textContent =
@@ -1679,13 +1718,14 @@
   /* ── 삭제 ── */
   async function deleteEpisode() {
     if (!currentBoardId || !currentEpId) return;
-    const snap = await getDoc(doc(db, 'sed_boards', currentBoardId, 'sed_episodes', currentEpId));
-    const title = snap.exists() ? (snap.data().title ?? '이 게시글') : '이 게시글';
+    const cur   = currentEpList.find(e => e.id === currentEpId);
+    const title = cur?.title ?? '이 게시글';
     if (!confirm(`"${title}"을 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`)) return;
     try {
       await deleteDoc(doc(db, 'sed_boards', currentBoardId, 'sed_episodes', currentEpId));
+      invalidateBoard(currentBoardId);
       stopYoutube();
-      showScreen('index');
+      showScreen('index', { replace: true });
     } catch(e) {
       alert('삭제 실패: ' + e.message);
     }
@@ -1694,9 +1734,8 @@
   /* ── 편집 ── */
   async function editCurrent() {
     if (!currentBoardId || !currentEpId) return;
-    const snap = await getDoc(doc(db, 'sed_boards', currentBoardId, 'sed_episodes', currentEpId));
-    if (!snap.exists()) return;
-    const ep = snap.data();
+    const ep = currentEpList.find(e => e.id === currentEpId);
+    if (!ep) return;
     document.getElementById('write-board-select').value = currentBoardId;
     document.getElementById('write-series').value = ep.series ?? '';
     document.getElementById('write-epnum').value  = ep.epNum ?? '';
@@ -1730,7 +1769,9 @@
       } else {
         await addDoc(collection(db, 'sed_boards', boardId, 'sed_episodes'), epData);
       }
-      showScreen('index');
+      invalidateBoard(boardId);
+      if (currentBoardId && currentBoardId !== boardId) invalidateBoard(currentBoardId);
+      showScreen('index', { replace: true });
     } catch(e) {
       alert('저장 실패: ' + e.message);
     } finally {
@@ -1744,11 +1785,11 @@
     for (const b of BOARDS) {
       lines.push(`\n---\n\n## ${b.name}\n`);
       try {
-        const snap = await getDocs(collection(db, 'sed_boards', b.id, 'sed_episodes'));
-        snap.docs
-          .sort((a,c) => (a.data().epNum||0) - (c.data().epNum||0))
-          .forEach(d => {
-            const ep  = d.data();
+        const list = await fetchBoardEpisodes(b.id);
+        list
+          .slice()
+          .sort((a,c) => (a.epNum||0) - (c.epNum||0))
+          .forEach(ep => {
             const num = ep.epNum != null ? String(ep.epNum).padStart(2,'0') : '??';
             lines.push(`\n### EPISODE ${num}. ${ep.title ?? ''}\n\n${ep.body ?? ''}\n`);
           });
@@ -1776,13 +1817,33 @@
   window._editingTlId   = null;
   window._editingTlName = null;
 
+  /* ── 타임라인 캐시 (이름 목록 / 타임라인별 아이템) ── */
+  let _tlNamesCache = null;               // string[] | null
+  const _tlItemsCache = new Map();        // tlName -> [{id, ...fields}]
+
+  async function fetchTlNames(force = false) {
+    if (!force && _tlNamesCache) return _tlNamesCache;
+    const snap = await getDocs(collection(db, 'sed_timeline-names'));
+    _tlNamesCache = snap.docs.map(d => d.id).sort();
+    return _tlNamesCache;
+  }
+  function invalidateTlNames() { _tlNamesCache = null; }
+
+  async function fetchTlItems(tlName, force = false) {
+    if (!force && _tlItemsCache.has(tlName)) return _tlItemsCache.get(tlName);
+    const snap = await getDocs(collection(db, 'sed_timelines', tlName, 'sed_items'));
+    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    _tlItemsCache.set(tlName, list);
+    return list;
+  }
+  function invalidateTlItems(tlName) { _tlItemsCache.delete(tlName); }
+
   function tlSortKey(item) { return item.order ?? 0; }
 
   /* ── 타임라인 전체 새로고침 ── */
   async function refreshTimeline() {
     try {
-      const snap = await getDocs(collection(db, 'sed_timeline-names'));
-      allTlNames = snap.docs.map(d => d.id).sort();
+      allTlNames = await fetchTlNames();
     } catch(e) { allTlNames = []; }
 
     renderTlTabs();
@@ -1856,9 +1917,9 @@
     const el = document.getElementById('tl-items');
     el.innerHTML = '<div class="state-msg" style="padding-left:28px">…</div>';
     try {
-      const snap = await getDocs(collection(db, 'sed_timelines', tlName, 'sed_items'));
-      const items = snap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
+      const rawItems = await fetchTlItems(tlName);
+      const items = rawItems
+        .slice()
         .sort((a, b) => tlSortKey(b) - tlSortKey(a));
 
       if (!items.length) {
@@ -1896,8 +1957,7 @@
   async function populateTlSelect(selectedName) {
     const sel = document.getElementById('tl-name-select');
     try {
-      const snap = await getDocs(collection(db, 'sed_timeline-names'));
-      allTlNames = snap.docs.map(d => d.id).sort();
+      allTlNames = await fetchTlNames();
     } catch(e) {}
 
     sel.innerHTML = '<option value="">타임라인을 선택하세요</option>';
@@ -1911,12 +1971,12 @@
     newOpt.value = '__new__'; newOpt.textContent = '+ 새 타임라인 만들기';
     sel.appendChild(newOpt);
 
-    // 편집 모드: 기존 데이터 채우기
+    // 편집 모드: 기존 데이터 채우기 (이미 불러온 아이템 캐시에서 조회)
     if (window._editingTlId && window._editingTlName) {
       try {
-        const snap = await getDoc(doc(db, 'sed_timelines', window._editingTlName, 'sed_items', window._editingTlId));
-        if (snap.exists()) {
-          const d = snap.data();
+        const items = await fetchTlItems(window._editingTlName);
+        const d = items.find(i => i.id === window._editingTlId);
+        if (d) {
           document.getElementById('tl-order-input').value   = d.order ?? '';
           document.getElementById('tl-title-input').value   = d.title ?? '';
           document.getElementById('tl-body-textarea').value = d.desc  ?? '';
@@ -1946,6 +2006,7 @@
       const ename = window._editingTlName;
 
       // 타임라인 이름을 timeline-names에 등록 (없으면 생성)
+      const isNewName = !allTlNames.includes(tlName);
       await updateDoc(doc(db, 'sed_timeline-names', tlName), { name: tlName }).catch(async () => {
         // 문서 없으면 setDoc으로 생성
         const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
@@ -1956,17 +2017,20 @@
         if (ename !== tlName) {
           await deleteDoc(doc(db, 'sed_timelines', ename, 'sed_items', eid));
           await addDoc(collection(db, 'sed_timelines', tlName, 'sed_items'), data);
+          invalidateTlItems(ename);
         } else {
           await updateDoc(doc(db, 'sed_timelines', tlName, 'sed_items', eid), data);
         }
       } else {
         await addDoc(collection(db, 'sed_timelines', tlName, 'sed_items'), data);
       }
+      invalidateTlItems(tlName);
+      if (isNewName) invalidateTlNames();
 
       window._editingTlId = null;
       window._editingTlName = null;
       currentTlName = tlName;
-      showScreen('timeline');
+      showScreen('timeline', { replace: true });
     } catch(e) {
       alert('저장 실패: ' + e.message);
     } finally {
@@ -1979,13 +2043,15 @@
   async function deleteTlBoard(tlName) {
     if (!confirm(`"${tlName}" 타임라인 전체를 삭제할까요?\n안의 항목이 모두 삭제되며 되돌릴 수 없습니다.`)) return;
     try {
-      // 1) 모든 items 삭제
-      const itemsSnap = await getDocs(collection(db, 'sed_timelines', tlName, 'sed_items'));
-      for (const d of itemsSnap.docs) {
-        await deleteDoc(doc(db, 'sed_timelines', tlName, 'sed_items', d.id));
+      // 1) 모든 items 삭제 (캐시에 있으면 재사용, 없으면 그때만 읽음)
+      const items = await fetchTlItems(tlName);
+      for (const it of items) {
+        await deleteDoc(doc(db, 'sed_timelines', tlName, 'sed_items', it.id));
       }
       // 2) timeline-names 에서 제거
       await deleteDoc(doc(db, 'sed_timeline-names', tlName));
+      invalidateTlItems(tlName);
+      invalidateTlNames();
 
       // 3) 상태 초기화 후 새로고침
       if (currentTlName === tlName) currentTlName = null;
@@ -2010,6 +2076,7 @@
     if (!confirm('이 항목을 삭제할까요?')) return;
     try {
       await deleteDoc(doc(db, 'sed_timelines', tlName, 'sed_items', itemId));
+      invalidateTlItems(tlName);
       renderTlItems(tlName);
     } catch(e) { alert('삭제 실패: ' + e.message); }
   }
