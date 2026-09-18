@@ -155,7 +155,7 @@
     /* 에피소드 목록: 6줄 고정 + 항상 스크롤 가능 */
     .episode-list {
       padding-left: 28px;
-      height: 132px;           /* ~6줄 고정 */
+      height: 220px;           /* ~6줄 고정 */
       overflow-y: scroll;      /* auto 대신 scroll로 항상 스크롤바 */
       scrollbar-width: thin;
       scrollbar-color: var(--ink-30) transparent;
@@ -408,6 +408,61 @@
       width: 60px;
       padding: 4px 0;
       text-align: center;
+    }
+
+    .write-series-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-shrink: 0;
+    }
+    .write-series-label {
+      font-family: var(--font-en);
+      font-size: 10px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--ink-60);
+    }
+    .write-series-input {
+      font-family: var(--font-ko);
+      font-size: 13px;
+      color: var(--ink);
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--ink-30);
+      outline: none;
+      flex: 1;
+      padding: 4px 0;
+    }
+
+    /* 시리즈 그룹 헤더 (NOTHINGNESS 전용) */
+    .series-header {
+      display: flex;
+      align-items: baseline;
+      margin: 12px 0 6px;
+    }
+    .series-header:first-child { margin-top: 0; }
+    .series-header-dash {
+      font-family: var(--font-en);
+      font-size: 10px;
+      color: var(--ink-30);
+      margin-right: 6px;
+      flex-shrink: 0;
+    }
+    .series-header-text {
+      font-family: var(--font-ko);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: .04em;
+      color: var(--ink-60);
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .series-header-dots {
+      flex: 1;
+      border-bottom: 1px dotted var(--ink-30);
+      margin-left: 8px;
     }
 
     .title-input {
@@ -1085,7 +1140,7 @@
     </div>
 
     <div class="board-select-wrap">
-      <select class="board-select" id="write-board-select">
+      <select class="board-select" id="write-board-select" onchange="toggleSeriesRow()">
         <option value="">게시판을 선택하세요</option>
         <option value="sugar-barrel">SUGAR BARREL</option>
         <option value="painkiller">PAINKILLER</option>
@@ -1094,6 +1149,11 @@
       <div class="board-select-arrow">
         <svg viewBox="0 0 10 6"><path d="M0 0l5 6 5-6z"/></svg>
       </div>
+    </div>
+
+    <div class="write-series-row" id="write-series-row" style="display:none">
+      <span class="write-series-label en">SERIES</span>
+      <input class="write-series-input" id="write-series" type="text" placeholder="시리즈명 (예: 켈트해의 금사자)" />
     </div>
 
     <div class="write-epnum-row">
@@ -1209,10 +1269,20 @@
   function openWrite() {
     window._editingEpId = null;
     document.getElementById('write-board-select').value = '';
+    document.getElementById('write-series').value = '';
     document.getElementById('write-epnum').value = '';
     document.getElementById('write-title').value = '';
     document.getElementById('write-body').value  = '';
+    toggleSeriesRow();
     showScreen('write');
+  }
+
+  /* NOTHINGNESS 게시판일 때만 SERIES 입력 필드 노출 */
+  function toggleSeriesRow() {
+    const boardId = document.getElementById('write-board-select').value;
+    const row = document.getElementById('write-series-row');
+    row.style.display = (boardId === 'nothingness') ? 'flex' : 'none';
+    if (boardId !== 'nothingness') document.getElementById('write-series').value = '';
   }
 
   function openTlWrite(editId, tlName) {
@@ -1457,6 +1527,17 @@
       return docs.slice().sort((a, b) => sortKey(b.data()) - sortKey(a.data()));
     }
 
+    function makeEpItem(d) {
+      const ep  = d.data();
+      const num = ep.epNum != null ? String(ep.epNum).padStart(2, '0') : '—';
+      const a   = document.createElement('a');
+      a.className = 'episode-item';
+      a.href = '#';
+      a.addEventListener('click', e => { e.preventDefault(); openEpisode(boardId, d.id); });
+      a.innerHTML = `<span class="ep-label en">EPISODE ${num}.&nbsp;</span>${ep.title ?? ''}`;
+      return a;
+    }
+
     function renderDocs(rawDocs) {
       const docs = sortedDocs(rawDocs);
       if (countEl) countEl.textContent = docs.length || '0';
@@ -1465,16 +1546,34 @@
         return;
       }
       el.innerHTML = '';
-      docs.forEach(d => {
-        const ep  = d.data();
-        const num = ep.epNum != null ? String(ep.epNum).padStart(2, '0') : '—';
-        const a   = document.createElement('a');
-        a.className = 'episode-item';
-        a.href = '#';
-        a.addEventListener('click', e => { e.preventDefault(); openEpisode(boardId, d.id); });
-        a.innerHTML = `<span class="ep-label en">EPISODE ${num}.&nbsp;</span>${ep.title ?? ''}`;
-        el.appendChild(a);
-      });
+
+      // NOTHINGNESS 게시판만: series 필드 기준으로 그룹핑해서 렌더
+      if (boardId === 'nothingness') {
+        const groups = new Map(); // key: series ('' = 미지정), value: { docs: [], maxKey }
+        docs.forEach(d => {
+          const key = (d.data().series ?? '').trim();
+          if (!groups.has(key)) groups.set(key, { docs: [], maxKey: -Infinity });
+          const g = groups.get(key);
+          g.docs.push(d);
+          g.maxKey = Math.max(g.maxKey, sortKey(d.data()));
+        });
+        // 그룹 정렬: 그룹 내 가장 최신(=sortKey 최대) 항목 기준 내림차순
+        const orderedGroups = Array.from(groups.entries())
+          .sort((a, b) => b[1].maxKey - a[1].maxKey);
+
+        orderedGroups.forEach(([seriesName, g]) => {
+          if (seriesName) {
+            const header = document.createElement('div');
+            header.className = 'series-header';
+            header.innerHTML = `<span class="series-header-dash">──</span><span class="series-header-text">${seriesName}</span><span class="series-header-dots"></span>`;
+            el.appendChild(header);
+          }
+          g.docs.forEach(d => el.appendChild(makeEpItem(d)));
+        });
+        return;
+      }
+
+      docs.forEach(d => el.appendChild(makeEpItem(d)));
     }
 
     try {
@@ -1599,9 +1698,11 @@
     if (!snap.exists()) return;
     const ep = snap.data();
     document.getElementById('write-board-select').value = currentBoardId;
+    document.getElementById('write-series').value = ep.series ?? '';
     document.getElementById('write-epnum').value  = ep.epNum ?? '';
     document.getElementById('write-title').value  = ep.title ?? '';
     document.getElementById('write-body').value   = ep.body  ?? '';
+    toggleSeriesRow();
     window._editingEpId = currentEpId;
     showScreen('write');
   }
@@ -1612,13 +1713,16 @@
     const epNum   = parseInt(document.getElementById('write-epnum').value) || null;
     const title   = document.getElementById('write-title').value.trim();
     const body    = document.getElementById('write-body').value;
+    const series  = boardId === 'nothingness'
+      ? (document.getElementById('write-series').value.trim() || null)
+      : null;
     if (!boardId) { alert('게시판을 선택해주세요.'); return; }
     if (!title)   { alert('제목을 입력해주세요.'); return; }
 
     const btn = document.getElementById('btn-save');
     btn.textContent = 'SAVING…'; btn.disabled = true;
     try {
-      const epData = { title, body, epNum, updatedAt: new Date().toISOString() };
+      const epData = { title, body, epNum, series, updatedAt: new Date().toISOString() };
       const eid = window._editingEpId;
       if (eid) {
         await updateDoc(doc(db, 'sed_boards', boardId, 'sed_episodes', eid), epData);
