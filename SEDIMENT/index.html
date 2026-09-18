@@ -459,11 +459,6 @@
       flex-shrink: 0;
       white-space: nowrap;
     }
-    .series-header-dots {
-      flex: 1;
-      border-bottom: 1px dotted var(--ink-30);
-      margin-left: 8px;
-    }
 
     .title-input {
       font-family: var(--font-ko);
@@ -1602,7 +1597,7 @@
           if (seriesName) {
             const header = document.createElement('div');
             header.className = 'series-header';
-            header.innerHTML = `<span class="series-header-dash">──</span><span class="series-header-text">${seriesName}</span><span class="series-header-dots"></span>`;
+            header.innerHTML = `<span class="series-header-dash">──</span><span class="series-header-text">${seriesName}</span>`;
             el.appendChild(header);
           }
           g.list.forEach(ep => el.appendChild(makeEpItem(ep)));
