@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cogito</title>
+<link rel="icon" href="favicon.png" type="image/png">
+<style>
+  :root {
+--bg:           #4c3e31;  /* 초콜릿 베이스 유지 */
+--bg-panel:     #57463a;
+--bg-elevated:  #6b5848;
+--bg-input:     #4a3a32;
+--text:         #f5ead9;
+--text-dim:     #c2ab9c;
+--border:       #7a6255;
+--accent:       #a25461;  /* 딸기 크림 느낌 — 채도를 낮춘 더스티 핑크/라즈베리 */
+--accent-hover: #dd8b96;  /* 살짝 더 밝고 화사하게, 생딸기 느낌 */
+--danger:       #9c5240;  /* accent(핑크)와 겹치지 않게 브라운 쪽으로 살짝 밀어서 구분 */
+--danger-hover: #b56a54;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  #app {
+    display: flex;
+    height: 100vh;
+  }
+
+  /* ── 사이드바 ── */
+  #sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 14px;
+  }
+
+  #sidebar h2 {
+    font-size: 14px;
+    color: var(--text-dim);
+    font-weight: 600;
+    margin: 4px 0 12px 4px;
+    letter-spacing: 0.02em;
+  }
+
+  #character-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .char-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text);
+    font-size: 14px;
+  }
+
+  .char-item:hover { background: var(--bg-elevated); }
+  .char-item.active { background: var(--bg-elevated); border-color: var(--accent); }
+
+  .char-item .char-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .char-item .char-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+
+  .char-item .char-export,
+  .char-item .char-edit,
+  .char-item .char-del {
+    color: var(--text-dim);
+    font-size: 13px;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .char-item .char-export:hover { color: var(--accent-hover); background: rgba(0,0,0,0.15); }
+  .char-item .char-edit:hover { color: var(--accent-hover); background: rgba(0,0,0,0.15); }
+  .char-item .char-del:hover { color: var(--danger-hover); background: rgba(0,0,0,0.15); }
+
+  #add-char-btn {
+    margin-top: 12px;
+    padding: 9px;
+    border-radius: 8px;
+    border: 1px dashed var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 13px;
+  }
+  #add-char-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── 메인 영역 ── */
+  #main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  #topbar {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--bg-panel);
+  }
+
+  #topbar .char-title {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .topbar-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .topbar-btn {
+    padding: 7px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .topbar-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .topbar-btn:disabled { color: var(--text-dim); cursor: default; opacity: 0.6; border-color: var(--border); }
+
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .msg-row { display: flex; }
+  .msg-row.user { justify-content: flex-end; }
+  .msg-row.model { justify-content: flex-start; }
+
+  .bubble {
+    max-width: 100%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .msg-row.user .bubble { background: var(--accent); color: var(--text); border-bottom-right-radius: 4px; }
+  .msg-row.model .bubble { background: var(--bg-elevated); border-bottom-left-radius: 4px; }
+
+  .bubble textarea {
+    width: 100%;
+    min-height: 60px;
+    background: var(--bg-input);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+  }
+
+  .msg-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  .msg-controls button {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .msg-controls button:hover { color: var(--text); background: rgba(0,0,0,0.15); }
+
+  .version-nav { display: flex; align-items: center; gap: 4px; }
+
+  .msg-select {
+    display: flex;
+    align-items: center;
+    align-self: center;
+  }
+  .msg-select input[type=checkbox] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+  }
+
+  #composer {
+    border-top: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    gap: 10px;
+    background: var(--bg-panel);
+  }
+
+  #composer textarea {
+    flex: 1;
+    resize: vertical;
+    min-height: 100px;
+    max-height: 400px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-input);
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+  }
+
+  #composer button {
+    padding: 0 20px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: #20302f;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  #composer button:hover { background: var(--accent-hover); }
+  #composer button:disabled { background: var(--bg-elevated); color: var(--text-dim); cursor: default; }
+
+  #empty-state {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    font-size: 14px;
+    text-align: center;
+    padding: 20px;
+  }
+
+  /* ── 모달 (캐릭터 추가/수정) ── */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+  .modal-backdrop.open { display: flex; }
+
+  .modal-box {
+    width: 480px;
+    max-width: 90vw;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .modal-box h3 { margin: 0 0 14px 0; font-size: 15px; }
+
+  .modal-box label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 5px;
+    margin-top: 12px;
+  }
+
+  .modal-box input[type=text], .modal-box textarea {
+    width: 100%;
+    padding: 9px 10px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+  }
+
+  .modal-box textarea { min-height: 160px; resize: vertical; }
+
+  .modal-box .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 18px;
+  }
+
+  .modal-box .modal-actions button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 13px;
+  }
+
+  .modal-box .modal-actions button.primary {
+    background: var(--accent);
+    color: #20302f;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+
+  .status-text {
+    font-size: 12px;
+    color: var(--text-dim);
+    padding: 0 20px 8px 20px;
+  }
+
+  .hidden { display: none !important; }
+
+  /* ── 모바일 대응 ── */
+  #hamburger-btn {
+    display: none;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    font-size: 16px;
+    padding: 6px 10px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  #hamburger-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  #sidebar-overlay { display: none; }
+
+  @media (max-width: 768px) {
+    #hamburger-btn { display: inline-flex; align-items: center; justify-content: center; }
+
+    #sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      height: 100%;
+      width: 80vw;
+      max-width: 300px;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      z-index: 40;
+      box-shadow: 2px 0 12px rgba(0,0,0,0.35);
+    }
+    #sidebar.open { transform: translateX(0); }
+
+    #sidebar-overlay.open {
+      display: block;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 35;
+    }
+
+    #topbar { padding: 10px 12px; gap: 8px; }
+    .topbar-actions { flex-wrap: wrap; gap: 6px; row-gap: 6px; }
+    .topbar-btn { padding: 8px 10px; min-height: 40px; font-size: 12.5px; }
+
+    #composer { padding: 10px 12px; }
+    #composer button { padding: 0 16px; min-height: 44px; }
+
+    .char-item { min-height: 40px; }
+    .char-item .char-export,
+    .char-item .char-edit,
+    .char-item .char-del { padding: 6px 8px; font-size: 15px; }
+
+    .modal-box { width: 92vw; padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="sidebar-overlay"></div>
+
+<div id="app">
+  <div id="sidebar">
+    <img src="favicon.png" style="width: 64px; height: 64px; margin-top: 20px; margin-bottom: 20px;">
+    <h2>Character</h2>
+    <div id="character-list"></div>
+    <button id="add-char-btn">+ Add character</button>
+  </div>
+
+  <div id="main">
+    <div id="topbar">
+      <button id="hamburger-btn" aria-label="메뉴">☰</button>
+      <span class="char-title" id="char-title">캐릭터를 선택하세요</span>
+      <div class="topbar-actions">
+        <button id="select-mode-btn" class="topbar-btn">메시지 선택</button>
+        <button id="delete-selected-btn" class="topbar-btn" style="display:none;">선택 삭제 (0)</button>
+        <button id="settings-btn" class="topbar-btn">⚙ 공통 프롬프트</button>
+      </div>
+    </div>
+    <div id="messages"></div>
+    <div id="empty-state" style="display:none;">왼쪽에서 캐릭터를 추가하고 선택하면 대화를 시작할 수 있어요.</div>
+    <div class="status-text" id="status-text"></div>
+    <div id="composer">
+      <textarea id="user-input" placeholder="₊˚⊹ ʚɞ  ࣭   ⊹ㅤ𝜗𝜚⊹ ‧₊˚ ౨ৎ₊˚⊹ ʚɞ  ࣭   ⊹ㅤ𝜗𝜚⊹ ‧₊˚ ౨ৎ" rows="1"></textarea>
+      <button id="send-btn">SEND</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-backdrop" class="modal-backdrop">
+  <div id="modal" class="modal-box">
+    <h3 id="modal-heading">Add character</h3>
+    <label>이름</label>
+    <input type="text" id="modal-name" placeholder="─── ⋆⋅ ꒰ა ♡ ໒꒱ ⋅⋆ ──">
+    <label>프롬프트</label>
+    <textarea id="modal-prompt" placeholder="₊˚⊹ ʚɞ  ࣭   ⊹ㅤ𝜗𝜚⊹ ‧₊˚ ౨ৎ"></textarea>
+    <div class="modal-actions">
+      <button id="modal-cancel">X</button>
+      <button id="modal-save" class="primary">OK</button>
+    </div>
+  </div>
+</div>
+
+<div id="settings-modal-backdrop" class="modal-backdrop">
+  <div id="settings-modal" class="modal-box">
+    <h3>공통 프롬프트</h3>
+    <label>모든 캐릭터에 공통으로 적용될 프롬프트</label>
+    <textarea id="common-prompt-input" placeholder="₊˚⊹ ʚɞ  ࣭   ⊹ㅤ𝜗𝜚⊹ ‧₊˚ ౨ৎ"></textarea>
+    <div class="modal-actions">
+      <button id="settings-cancel">X</button>
+      <button id="settings-save" class="primary">OK</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc,
+  query, orderBy, writeBatch
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// ─────────────────────────────────────────────
+// Firebase 설정 — 본인 Firebase 프로젝트 콘솔에서 복사한 값으로 교체하세요.
+// (Firebase Config 값 자체는 클라이언트에 노출돼도 안전하도록 설계된 값입니다)
+// ⚠️ 로그인 없이, 기존 프로젝트의 (default) 데이터베이스와 그 열린 규칙을
+//   그대로 사용합니다. 즉 배포 주소를 아는 사람은 누구나 Cogito 데이터를
+//   읽고 쓸 수 있어요 — 개인용 저위험 용도로만 이렇게 쓰기로 한 상태입니다.
+// ─────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyDQ8Yp6GMGXZ9DRjSdHkxom_Jx50ELwApA",
+  authDomain: "herb-a0db3.firebaseapp.com",
+  databaseURL: "https://herb-a0db3-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "herb-a0db3",
+  storageBucket: "herb-a0db3.firebasestorage.app",
+  messagingSenderId: "244376314992",
+  appId: "1:244376314992:web:c12c2be7fa844ccaabc0b5"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp); // 기존 앱과 같은 (default) 데이터베이스
+
+// ─────────────────────────────────────────────
+// Gemini API 키
+// ⚠️ 기존에 이 파일에 있던 키는 이미 노출된 것으로 간주하고 폐기하세요.
+//   AI Studio에서 새 키를 발급받고, Google Cloud Console에서
+//   "HTTP 리퍼러(웹사이트)" 제한을 걸어 이 값에 넣으세요. (SETUP.md 참고)
+// ─────────────────────────────────────────────
+const GEMINI_API_KEY = "AQ.Ab8RN6Law7LLOqoqvB_SF8KI2mQswl75cRUN7IceeR68S_kkQA";
+const MODEL_NAME = "gemini-3.5-flash-lite";
+
+// ── 상태 ──
+let characters = []; // [{id, name, systemPrompt}]
+let conversations = {}; // { [charId]: null(미로딩) | [ {id, role, versions:[...], activeIndex, order} ] }
+let activeCharId = null;
+let editingCharId = null; // 모달이 "수정" 모드일 때 대상 id
+let commonPrompt = ""; // 모든 캐릭터에 공통으로 적용되는 프롬프트
+let selectionMode = false; // 메시지 다중 선택 삭제 모드
+let selectedIndices = new Set(); // 선택된 메시지 인덱스
+
+const el = (id) => document.getElementById(id);
+
+function getApiKey() {
+  return GEMINI_API_KEY;
+}
+
+// ─────────────────────────────────────────────
+// Firestore 경로 helper
+// 기존 앱 컬렉션과 안 겹치도록 cogito_ 접두사를 붙인 고정 경로 사용
+// (로그인이 없어서 uid로 구분하지 않음)
+// 구조: cogito_characters/{charId}
+//       cogito_characters/{charId}/messages/{msgId}
+//       cogito_settings/general
+// ─────────────────────────────────────────────
+function charactersCol() {
+  return collection(db, "cogito_characters");
+}
+function messagesCol(charId) {
+  return collection(db, "cogito_characters", charId, "messages");
+}
+function settingsDocRef() {
+  return doc(db, "cogito_settings", "general");
+}
+
+// ─────────────────────────────────────────────
+// Firestore 불러오기
+// ─────────────────────────────────────────────
+
+async function loadCharacters() {
+  const snap = await getDocs(charactersCol());
+  characters = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  conversations = {};
+  if (characters.length === 0) {
+    const ref = doc(charactersCol());
+    const data = {
+      name: "기본 도우미",
+      systemPrompt: "너는 친절하고 유쾌한 AI 캐릭터야. 사용자와 편하게 반말로 대화하고, 항상 공감하는 태도를 유지해."
+    };
+    await setDoc(ref, data);
+    characters = [{ id: ref.id, ...data }];
+  }
+  characters.forEach((c) => { conversations[c.id] = null; }); // null = 아직 메시지 안 불러옴 (캐릭터 선택 시 지연 로딩)
+}
+
+async function loadMessages(charId) {
+  if (conversations[charId]) return; // 이미 불러온 캐릭터면 재요청 안 함
+  const snap = await getDocs(query(messagesCol(charId), orderBy("order")));
+  conversations[charId] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+async function loadSettings() {
+  const snap = await getDoc(settingsDocRef());
+  commonPrompt = snap.exists() ? (snap.data().commonPrompt || "") : "";
+}
+
+// ─────────────────────────────────────────────
+// Firestore 저장 (변경분만 개별적으로 씀 — 문서당 1MB 한도와 무관하게 동작)
+// ─────────────────────────────────────────────
+
+async function saveCharacterDoc(charId, data) {
+  await setDoc(doc(charactersCol(), charId), data, { merge: true });
+}
+
+async function deleteCharacterDoc(charId) {
+  const msgSnap = await getDocs(messagesCol(charId));
+  const batch = writeBatch(db);
+  msgSnap.docs.forEach((d) => batch.delete(d.ref));
+  batch.delete(doc(charactersCol(), charId));
+  await batch.commit();
+}
+
+async function addMessageDoc(charId, msg) {
+  const ref = doc(messagesCol(charId));
+  const order = Date.now();
+  await setDoc(ref, { role: msg.role, versions: msg.versions, activeIndex: msg.activeIndex, order });
+  msg.id = ref.id;
+  msg.order = order;
+}
+
+async function updateMessageDoc(charId, msg) {
+  if (!msg.id) return;
+  await setDoc(
+    doc(messagesCol(charId), msg.id),
+    { role: msg.role, versions: msg.versions, activeIndex: msg.activeIndex, order: msg.order },
+    { merge: true }
+  );
+}
+
+async function deleteMessageDocById(charId, msgId) {
+  if (!msgId) return;
+  await deleteDoc(doc(messagesCol(charId), msgId));
+}
+
+async function saveCommonPromptDoc(text) {
+  await setDoc(settingsDocRef(), { commonPrompt: text }, { merge: true });
+}
+
+// ─────────────────────────────────────────────
+// 렌더링
+// ─────────────────────────────────────────────
+
+function renderCharacterList() {
+  const list = el("character-list");
+  list.innerHTML = "";
+  characters.forEach((c) => {
+    const item = document.createElement("div");
+    item.className = "char-item" + (c.id === activeCharId ? " active" : "");
+    item.innerHTML = `
+      <span class="char-name">${escapeHtml(c.name)}</span>
+      <span class="char-actions">
+        <span class="char-export" data-id="${c.id}" title="마크다운으로 내보내기">⬇</span>
+        <span class="char-edit" data-id="${c.id}">✎</span>
+        <span class="char-del" data-id="${c.id}">✕</span>
+      </span>
+    `;
+    item.addEventListener("click", async (e) => {
+      if (
+        e.target.classList.contains("char-del") ||
+        e.target.classList.contains("char-edit") ||
+        e.target.classList.contains("char-export")
+      ) return;
+      activeCharId = c.id;
+      await loadMessages(activeCharId);
+      selectionMode = false;
+      selectedIndices.clear();
+      applySelectionModeUi();
+      renderCharacterList();
+      renderMain();
+      closeSidebarDrawer();
+    });
+    item.querySelector(".char-export").addEventListener("click", () => exportCharacterMarkdown(c.id));
+    item.querySelector(".char-edit").addEventListener("click", () => openModal(c.id));
+    item.querySelector(".char-del").addEventListener("click", () => deleteCharacter(c.id));
+    list.appendChild(item);
+  });
+}
+
+function renderMain() {
+  const character = characters.find((c) => c.id === activeCharId);
+  const messagesEl = el("messages");
+  const emptyEl = el("empty-state");
+  const composerEl = el("composer");
+
+  if (!character) {
+    el("char-title").textContent = "캐릭터를 선택하세요";
+    messagesEl.style.display = "none";
+    composerEl.style.display = "none";
+    emptyEl.style.display = "flex";
+    return;
+  }
+
+  el("char-title").textContent = character.name;
+  messagesEl.style.display = "flex";
+  composerEl.style.display = "flex";
+  emptyEl.style.display = "none";
+
+  const history = conversations[activeCharId] || [];
+  messagesEl.innerHTML = "";
+
+  history.forEach((msg, idx) => {
+    messagesEl.appendChild(renderMessage(msg, idx));
+  });
+
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function renderMessage(msg, idx) {
+  const row = document.createElement("div");
+  row.className = "msg-row " + msg.role;
+
+  if (selectionMode) {
+    const selectWrap = document.createElement("label");
+    selectWrap.className = "msg-select";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = selectedIndices.has(idx);
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) selectedIndices.add(idx);
+      else selectedIndices.delete(idx);
+      updateDeleteSelectedBtn();
+    });
+    selectWrap.appendChild(checkbox);
+    row.appendChild(selectWrap);
+  }
+
+  const bubbleWrap = document.createElement("div");
+  bubbleWrap.style.display = "flex";
+  bubbleWrap.style.flexDirection = "column";
+  bubbleWrap.style.alignItems = msg.role === "user" ? "flex-end" : "flex-start";
+  bubbleWrap.style.maxWidth = "70%";
+  bubbleWrap.style.minWidth = "0";
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.textContent = msg.versions[msg.activeIndex];
+  bubbleWrap.appendChild(bubble);
+
+  const controls = document.createElement("div");
+  controls.className = "msg-controls";
+
+  // 버전 네비게이션 (버전이 2개 이상일 때만 표시)
+  if (msg.versions.length > 1) {
+    const nav = document.createElement("div");
+    nav.className = "version-nav";
+    const prevBtn = document.createElement("button");
+    prevBtn.textContent = "◀";
+    prevBtn.disabled = msg.activeIndex === 0;
+    prevBtn.addEventListener("click", async () => {
+      msg.activeIndex = Math.max(0, msg.activeIndex - 1);
+      renderMain();
+      await updateMessageDoc(activeCharId, msg);
+    });
+    const label = document.createElement("span");
+    label.textContent = `${msg.activeIndex + 1}/${msg.versions.length}`;
+    const nextBtn = document.createElement("button");
+    nextBtn.textContent = "▶";
+    nextBtn.disabled = msg.activeIndex === msg.versions.length - 1;
+    nextBtn.addEventListener("click", async () => {
+      msg.activeIndex = Math.min(msg.versions.length - 1, msg.activeIndex + 1);
+      renderMain();
+      await updateMessageDoc(activeCharId, msg);
+    });
+    nav.append(prevBtn, label, nextBtn);
+    controls.appendChild(nav);
+  }
+
+  // 수정 버튼
+  const editBtn = document.createElement("button");
+  editBtn.textContent = "수정";
+  editBtn.addEventListener("click", () => startEditMessage(bubble, msg));
+  controls.appendChild(editBtn);
+
+  // 삭제 버튼 (이 메시지 하나만 삭제)
+  const delBtn = document.createElement("button");
+  delBtn.textContent = "삭제";
+  delBtn.addEventListener("click", () => deleteMessage(idx));
+  controls.appendChild(delBtn);
+
+  // 재생성 버튼 (AI 메시지에만, 마지막 메시지에만)
+  const history = conversations[activeCharId];
+  const isLastMessage = idx === history.length - 1;
+  if (msg.role === "model" && isLastMessage) {
+    const regenBtn = document.createElement("button");
+    regenBtn.textContent = "다시 생성";
+    regenBtn.addEventListener("click", () => regenerateMessage(idx));
+    controls.appendChild(regenBtn);
+  }
+
+  bubbleWrap.appendChild(controls);
+  row.appendChild(bubbleWrap);
+  return row;
+}
+
+function startEditMessage(bubbleEl, msg) {
+  const original = msg.versions[msg.activeIndex];
+
+  // 편집 모드에서는 textarea가 부모 크기에 맞춰 자동으로 넓어지지 않으므로
+  // bubbleWrap에 고정폭을 직접 지정해줘야 함
+  const wrap = bubbleEl.parentElement;
+  if (wrap) {
+    wrap.style.width = "min(640px, 90%)";
+  }
+  bubbleEl.style.width = "100%";
+
+  bubbleEl.innerHTML = "";
+  const textarea = document.createElement("textarea");
+  textarea.value = original;
+  bubbleEl.appendChild(textarea);
+  textarea.focus();
+
+  const saveOnBlur = async () => {
+    msg.versions[msg.activeIndex] = textarea.value;
+    renderMain();
+    await updateMessageDoc(activeCharId, msg);
+  };
+  textarea.addEventListener("blur", saveOnBlur);
+  textarea.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      textarea.blur();
+    }
+  });
+}
+
+function escapeHtml(str) {
+  const d = document.createElement("div");
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+// ─────────────────────────────────────────────
+// 메시지 삭제 (개별 / 다중 선택)
+// ─────────────────────────────────────────────
+
+async function deleteMessage(idx) {
+  if (!confirm("이 메시지를 삭제할까요?")) return;
+  const charId = activeCharId;
+  const history = conversations[charId];
+  const [removed] = history.splice(idx, 1);
+  renderMain();
+  await deleteMessageDocById(charId, removed.id);
+}
+
+function toggleSelectionMode() {
+  if (!activeCharId) return;
+  selectionMode = !selectionMode;
+  selectedIndices.clear();
+  applySelectionModeUi();
+  renderMain();
+}
+
+async function deleteSelectedMessages() {
+  if (selectedIndices.size === 0) return;
+  if (!confirm(`선택한 ${selectedIndices.size}개의 메시지를 삭제할까요?`)) return;
+  const charId = activeCharId;
+  const history = conversations[charId];
+  const removedIds = [];
+  Array.from(selectedIndices)
+    .sort((a, b) => b - a) // 뒤에서부터 지워야 인덱스가 안 꼬임
+    .forEach((i) => { removedIds.push(history[i].id); history.splice(i, 1); });
+  selectedIndices.clear();
+  selectionMode = false;
+  applySelectionModeUi();
+  renderMain();
+  await Promise.all(removedIds.map((id) => deleteMessageDocById(charId, id)));
+}
+
+function applySelectionModeUi() {
+  el("select-mode-btn").textContent = selectionMode ? "선택 취소" : "메시지 선택";
+  el("delete-selected-btn").style.display = selectionMode ? "inline-block" : "none";
+  updateDeleteSelectedBtn();
+}
+
+function updateDeleteSelectedBtn() {
+  const btn = el("delete-selected-btn");
+  btn.textContent = `선택 삭제 (${selectedIndices.size})`;
+  btn.disabled = selectedIndices.size === 0;
+}
+
+// ─────────────────────────────────────────────
+// 캐릭터 추가/삭제
+// ─────────────────────────────────────────────
+
+function openModal(charId) {
+  editingCharId = charId || null;
+  const isEdit = !!charId;
+  el("modal-heading").textContent = isEdit ? "캐릭터 수정" : "캐릭터 추가";
+  if (isEdit) {
+    const c = characters.find((c) => c.id === charId);
+    el("modal-name").value = c.name;
+    el("modal-prompt").value = c.systemPrompt;
+  } else {
+    el("modal-name").value = "";
+    el("modal-prompt").value = "";
+  }
+  el("modal-backdrop").classList.add("open");
+}
+
+function closeModal() {
+  el("modal-backdrop").classList.remove("open");
+  editingCharId = null;
+}
+
+async function saveModal() {
+  const name = el("modal-name").value.trim();
+  const prompt = el("modal-prompt").value.trim();
+  if (!name) { alert("이름을 입력해주세요."); return; }
+
+  if (editingCharId) {
+    const c = characters.find((c) => c.id === editingCharId);
+    c.name = name;
+    c.systemPrompt = prompt;
+    closeModal();
+    renderCharacterList();
+    renderMain();
+    await saveCharacterDoc(editingCharId, { name, systemPrompt: prompt });
+  } else {
+    const data = { name, systemPrompt: prompt };
+    const ref = doc(charactersCol());
+    await setDoc(ref, data);
+    characters.push({ id: ref.id, ...data });
+    conversations[ref.id] = [];
+    activeCharId = ref.id;
+    closeModal();
+    renderCharacterList();
+    renderMain();
+  }
+}
+
+// ─────────────────────────────────────────────
+// 공통 프롬프트 설정
+// ─────────────────────────────────────────────
+
+function openSettingsModal() {
+  el("common-prompt-input").value = commonPrompt;
+  el("settings-modal-backdrop").classList.add("open");
+}
+
+function closeSettingsModal() {
+  el("settings-modal-backdrop").classList.remove("open");
+}
+
+async function saveSettingsModal() {
+  commonPrompt = el("common-prompt-input").value.trim();
+  closeSettingsModal();
+  await saveCommonPromptDoc(commonPrompt);
+}
+
+async function deleteCharacter(id) {
+  const c = characters.find((c) => c.id === id);
+  if (!confirm(`"${c.name}" 캐릭터를 삭제할까요? 대화 기록도 함께 사라집니다.`)) return;
+  characters = characters.filter((c) => c.id !== id);
+  delete conversations[id];
+  if (activeCharId === id) {
+    activeCharId = characters.length > 0 ? characters[0].id : null;
+    if (activeCharId) await loadMessages(activeCharId);
+  }
+  renderCharacterList();
+  renderMain();
+  await deleteCharacterDoc(id);
+}
+
+// ─────────────────────────────────────────────
+// 대화 내보내기 (마크다운)
+// ─────────────────────────────────────────────
+
+async function exportCharacterMarkdown(charId) {
+  const character = characters.find((c) => c.id === charId);
+  if (!character) return;
+
+  await loadMessages(charId);
+  // 오직 이 캐릭터의 대화 기록만 사용 (다른 캐릭터와는 무관)
+  const history = conversations[charId] || [];
+  if (history.length === 0) {
+    alert(`"${character.name}"의 대화 내용이 없어요.`);
+    return;
+  }
+
+  const now = new Date();
+  const lines = [];
+  lines.push(`# ${character.name} 대화 기록`);
+  lines.push("");
+  lines.push(`- 내보낸 날짜: ${now.toLocaleString("ko-KR")}`);
+  lines.push(`- 캐릭터: ${character.name}`);
+  lines.push("");
+  lines.push("---");
+
+  history.forEach((msg) => {
+    const content = msg.versions[msg.activeIndex];
+    const speakerLabel = msg.role === "user" ? "👤user" : `💬${character.name}`;
+    lines.push("");
+    lines.push(`### ${speakerLabel}`);
+    lines.push("");
+    // 마크다운 인용구(>) 형식으로 감싸서 말풍선 내용임을 시각적으로 구분
+    const quoted = content
+      .split("\n")
+      .map((line) => `> ${line}`)
+      .join("\n");
+    lines.push(quoted);
+    lines.push("");
+    lines.push("---");
+  });
+
+  const markdown = lines.join("\n");
+  const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const safeName = character.name.replace(/[\\/:*?"<>|]/g, "_").trim() || "character";
+  const dateStr = now.toISOString().slice(0, 10);
+  a.download = `${safeName}_대화_${dateStr}.md`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ─────────────────────────────────────────────
+// API 호출
+// ─────────────────────────────────────────────
+
+async function callGemini(history, systemPrompt) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error("API 키가 설정되지 않았어요.");
+  }
+
+  const contents = history.map((msg) => ({
+    role: msg.role,
+    parts: [{ text: msg.versions[msg.activeIndex] }]
+  }));
+
+  // 공통 프롬프트 + 캐릭터별 프롬프트를 하나로 합쳐서 systemInstruction으로 전송
+  // (별도 API 호출을 추가하지 않고, 같은 요청 안에서 문자열만 합침)
+  const combinedPrompt = [commonPrompt, systemPrompt].filter((s) => s && s.trim()).join("\n\n");
+
+  const body = {
+    contents,
+    systemInstruction: { parts: [{ text: combinedPrompt }] }
+  };
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    }
+  );
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    const message = data?.error?.message || `요청 실패 (status ${res.status})`;
+    throw new Error(message);
+  }
+
+  const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join("") || "(빈 응답)";
+  return text;
+}
+
+async function sendMessage() {
+  const input = el("user-input");
+  const text = input.value.trim();
+  if (!text || !activeCharId) return;
+
+  const charId = activeCharId;
+  const character = characters.find((c) => c.id === charId);
+  const history = conversations[charId];
+
+  const userMsg = { role: "user", versions: [text], activeIndex: 0 };
+  history.push(userMsg);
+  input.value = "";
+  renderMain();
+  await addMessageDoc(charId, userMsg);
+
+  await requestModelReply(charId, character, history);
+}
+
+async function requestModelReply(charId, character, history) {
+  setSending(true);
+  const modelMsg = { role: "model", versions: [], activeIndex: 0 };
+  try {
+    const replyText = await callGemini(history, character.systemPrompt);
+    modelMsg.versions = [replyText];
+  } catch (err) {
+    modelMsg.versions = [`⚠️ 오류: ${err.message}`];
+  }
+  history.push(modelMsg);
+  setSending(false);
+  renderMain();
+  await addMessageDoc(charId, modelMsg);
+}
+
+async function regenerateMessage(idx) {
+  const charId = activeCharId;
+  const history = conversations[charId];
+  const character = characters.find((c) => c.id === charId);
+  const msg = history[idx];
+  const contextForRequest = history.slice(0, idx); // 이 메시지 이전까지의 대화만 사용
+
+  setSending(true);
+  try {
+    const replyText = await callGemini(contextForRequest, character.systemPrompt);
+    msg.versions.push(replyText);
+    msg.activeIndex = msg.versions.length - 1;
+  } catch (err) {
+    msg.versions.push(`⚠️ 오류: ${err.message}`);
+    msg.activeIndex = msg.versions.length - 1;
+  }
+  setSending(false);
+  renderMain();
+  await updateMessageDoc(charId, msg);
+}
+
+function setSending(isSending) {
+  el("send-btn").disabled = isSending;
+  el("status-text").textContent = isSending ? "답변을 기다리는 중..." : "";
+}
+
+// ─────────────────────────────────────────────
+// 이벤트 바인딩
+// ─────────────────────────────────────────────
+
+el("add-char-btn").addEventListener("click", () => openModal(null));
+el("modal-cancel").addEventListener("click", closeModal);
+el("modal-save").addEventListener("click", saveModal);
+el("settings-btn").addEventListener("click", openSettingsModal);
+el("settings-cancel").addEventListener("click", closeSettingsModal);
+el("settings-save").addEventListener("click", saveSettingsModal);
+el("select-mode-btn").addEventListener("click", toggleSelectionMode);
+el("delete-selected-btn").addEventListener("click", deleteSelectedMessages);
+el("send-btn").addEventListener("click", sendMessage);
+
+// 한글 등 IME 조합 중인지 추적 (조합 중 Enter로 인한 중복 전송 방지)
+let isComposing = false;
+const userInputEl = el("user-input");
+userInputEl.addEventListener("compositionstart", () => { isComposing = true; });
+userInputEl.addEventListener("compositionend", () => { isComposing = false; });
+
+// Enter: 줄바꿈 (기본 동작 유지) / Ctrl+Enter(또는 Cmd+Enter): 전송
+userInputEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+    if (isComposing || e.isComposing) return;
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+// ─────────────────────────────────────────────
+// 모바일 사이드바 드로어
+// ─────────────────────────────────────────────
+function openSidebarDrawer() {
+  el("sidebar").classList.add("open");
+  el("sidebar-overlay").classList.add("open");
+}
+function closeSidebarDrawer() {
+  el("sidebar").classList.remove("open");
+  el("sidebar-overlay").classList.remove("open");
+}
+el("hamburger-btn").addEventListener("click", () => {
+  if (el("sidebar").classList.contains("open")) closeSidebarDrawer();
+  else openSidebarDrawer();
+});
+el("sidebar-overlay").addEventListener("click", closeSidebarDrawer);
+
+// ─────────────────────────────────────────────
+// 초기 부트스트랩 (로그인 없이 바로 시작)
+// ─────────────────────────────────────────────
+async function init() {
+  await loadCharacters();
+  await loadSettings();
+  activeCharId = characters.length > 0 ? characters[0].id : null;
+  if (activeCharId) await loadMessages(activeCharId);
+  applySelectionModeUi();
+  renderCharacterList();
+  renderMain();
+}
+init();
+</script>
+
+</body>
+</html>
