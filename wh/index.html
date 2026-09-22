@@ -654,10 +654,28 @@ function refillQueue(excludeId){
   }
   ytQueue = shuffled;
 }
+function getVideoLabel(vid){
+  const v = (settings.videos||[]).find(v=>v.id===vid);
+  return (v && v.label) ? v.label : null;
+}
+function withTimeout(promise, ms){
+  return Promise.race([
+    promise,
+    new Promise((_, reject)=> setTimeout(()=> reject(new Error("timeout")), ms))
+  ]);
+}
 async function updateTickerText(vid){
   const textEl = document.getElementById("yt-marquee-text");
+  // 관리자가 곡 추가할 때 이름을 입력해뒀다면, 외부 요청 없이 그 이름을 바로 쓴다.
+  // (유튜브 oembed 요청은 광고차단기 등에 막히면 응답이 아예 안 와서 "불러오는 중..."에 멈춰있을 수 있음)
+  const knownLabel = getVideoLabel(vid);
+  if(knownLabel){ textEl.textContent = "♪ " + knownLabel + "   "; return; }
+  textEl.textContent = "♪ 불러오는 중...   ";
   try{
-    const r = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${vid}&format=json`);
+    const r = await withTimeout(
+      fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${vid}&format=json`),
+      4000
+    );
     const d = await r.json();
     textEl.textContent = "♪ " + d.title + "   ";
   }catch(e){ textEl.textContent = "♪ now playing   "; }
@@ -699,16 +717,25 @@ document.getElementById("ytToggle").onclick = ()=>{
   if(state === 1){ ytPlayer.pauseVideo(); } else { ytPlayer.playVideo(); }
 };
 
+// 페이지가 처음 열렸을 때만 동작 — 등록된 곡 중 하나를 랜덤으로 골라 첫 곡으로 큐잉한다.
+// 이미 재생목록이 시작된 뒤(lastTickerId가 있는 뒤)에는 아무 것도 바꾸지 않아서,
+// 프로필/링크 등 다른 설정을 저장해도 재생 중이던 곡이 끊기지 않는다.
 function refreshTicker(){
-  const vid = settings.currentVideoId;
+  const videos = settings.videos || [];
   const textEl = document.getElementById("yt-marquee-text");
-  if(!vid){ textEl.textContent = "재생목록이 비어있습니다 (관리자: 티커 우클릭)"; return; }
-  if(vid !== lastTickerId){
-    lastTickerId = vid;
-    if(ytPlayer && ytPlayer.cueVideoById){ ytPlayer.cueVideoById(vid); }
-    else { maybeCreatePlayer(); }
-    updateTickerText(vid);
+  if(!videos.length){
+    lastTickerId = null;
+    textEl.textContent = "재생목록이 비어있습니다 (관리자: 티커 우클릭)";
+    return;
   }
+  if(lastTickerId !== null) return; // 이미 재생목록이 돌아가고 있음
+  if(ytQueue.length===0) refillQueue(null);
+  const firstId = ytQueue.shift();
+  lastTickerId = firstId;
+  settings.currentVideoId = firstId; // 화면 표시/플레이어 초기화용 (Firestore에는 쓰지 않음)
+  if(ytPlayer && ytPlayer.cueVideoById){ ytPlayer.cueVideoById(firstId); }
+  else { maybeCreatePlayer(); }
+  updateTickerText(firstId);
 }
 
 /* ---------- 음악 관리 (우클릭 티커) ---------- */
