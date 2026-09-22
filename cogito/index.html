@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Cogito</title>
 <link rel="icon" href="favicon.png" type="image/png">
 <style>
@@ -28,12 +28,14 @@
     background: var(--bg);
     color: var(--text);
     height: 100vh;
+    height: 100dvh;
     overflow: hidden;
   }
 
   #app {
     display: flex;
     height: 100vh;
+    height: 100dvh;
   }
 
   /* ── 사이드바 ── */
@@ -233,6 +235,7 @@
   #composer {
     border-top: 1px solid var(--border);
     padding: 14px 20px;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
     display: flex;
     gap: 10px;
     background: var(--bg-panel);
@@ -240,6 +243,7 @@
 
   #composer textarea {
     flex: 1;
+    min-width: 0;
     resize: vertical;
     min-height: 100px;
     max-height: 400px;
@@ -390,12 +394,20 @@
       z-index: 35;
     }
 
-    #topbar { padding: 10px 12px; gap: 8px; }
+    #topbar { padding: 10px 12px; padding-top: calc(10px + env(safe-area-inset-top, 0px)); gap: 8px; }
+    #sidebar { padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
     .topbar-actions { flex-wrap: wrap; gap: 6px; row-gap: 6px; }
     .topbar-btn { padding: 8px 10px; min-height: 40px; font-size: 12.5px; }
 
-    #composer { padding: 10px 12px; }
+    #composer { padding: 10px 12px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
     #composer button { padding: 0 16px; min-height: 44px; }
+
+    #composer textarea,
+    .bubble textarea,
+    .modal-box input[type=text],
+    .modal-box textarea {
+      font-size: 16px; /* iOS Safari는 16px 미만 입력창을 탭하면 자동으로 확대함 */
+    }
 
     .char-item { min-height: 40px; }
     .char-item .char-export,
@@ -403,6 +415,8 @@
     .char-item .char-del { padding: 6px 8px; font-size: 15px; }
 
     .modal-box { width: 92vw; padding: 16px; }
+
+    .bubble textarea { min-height: 140px; }
   }
 </style>
 </head>
@@ -765,6 +779,9 @@ function renderMessage(msg, idx) {
 function startEditMessage(bubbleEl, msg) {
   const original = msg.versions[msg.activeIndex];
 
+  // 수정 중에는 하단 입력창을 가려서 화면 공간을 확보
+  el("composer").classList.add("hidden");
+
   // 편집 모드에서는 textarea가 부모 크기에 맞춰 자동으로 넓어지지 않으므로
   // bubbleWrap에 고정폭을 직접 지정해줘야 함
   const wrap = bubbleEl.parentElement;
@@ -781,6 +798,7 @@ function startEditMessage(bubbleEl, msg) {
 
   const saveOnBlur = async () => {
     msg.versions[msg.activeIndex] = textarea.value;
+    el("composer").classList.remove("hidden");
     renderMain();
     await updateMessageDoc(activeCharId, msg);
   };
