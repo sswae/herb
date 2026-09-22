@@ -837,10 +837,10 @@ document.getElementById("adminGear").addEventListener("click", async ()=>{
     };
   }else{
     box.innerHTML = `
-      <h3>관리자 로그인</h3>
+      <h3>ADMIN</h3>
       <input type="password" id="loginAdminPw" placeholder="Password">
       <div class="row"><button class="plainBtn" onclick="closeMini('adminOverlay')">cancel</button>
-      <button class="plainBtn" id="loginSaveBtn">로그인</button></div>`;
+      <button class="plainBtn" id="loginSaveBtn">login</button></div>`;
     openMini("adminOverlay");
     document.getElementById("loginSaveBtn").onclick = async ()=>{
       const pw = document.getElementById("loginAdminPw").value;
