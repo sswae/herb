@@ -230,10 +230,10 @@
 <!-- nsfw 비번 -->
 <div class="miniOverlay" id="nsfwOverlay">
   <div class="miniBox">
-    <h5>🔒 インテレオンの図鑑番号を入力してください (Enter Inteleon's Pokédex number)</h5>
+    <h5>🔒 インテレオンの図鑑番号を入力してください (Enter Inteleon's Pokedex number)</h5>
     <input type="password" id="nsfwPw" placeholder="Password">
-    <div class="row"><button class="plainBtn" onclick="closeMini('nsfwOverlay')">cancel</button>
-    <button class="plainBtn" id="nsfwOkBtn">ok</button></div>
+    <div class="row"><button class="plainBtn" onclick="closeMini('nsfwOverlay')">❌</button>
+    <button class="plainBtn" id="nsfwOkBtn">✅</button></div>
   </div>
 </div>
 
@@ -245,8 +245,8 @@
   <div class="miniBox">
     <h3>업로드할 이미지</h3>
     <div id="uploadQueueList" style="max-height:260px;overflow:auto;"></div>
-    <div class="row"><button class="plainBtn" onclick="closeMini('uploadOverlay')">cancel</button>
-    <button class="plainBtn" id="uploadConfirmBtn">upload</button></div>
+    <div class="row"><button class="plainBtn" onclick="closeMini('uploadOverlay')">❌</button>
+    <button class="plainBtn" id="uploadConfirmBtn">✅</button></div>
   </div>
 </div>
 
@@ -256,8 +256,8 @@
     <h3>이미지 수정</h3>
     <label>제목</label><input type="text" id="editTitleInput">
     <label><input type="checkbox" id="editNsfwCheck" style="width:auto;"> NSFW</label>
-    <div class="row"><button class="plainBtn" onclick="closeMini('editOverlay')">cancel</button>
-    <button class="plainBtn" id="editSaveBtn">save</button></div>
+    <div class="row"><button class="plainBtn" onclick="closeMini('editOverlay')">❌</button>
+    <button class="plainBtn" id="editSaveBtn">✅</button></div>
   </div>
 </div>
 
@@ -270,8 +270,8 @@
     <label>소개글</label><textarea id="pfBio" rows="3"></textarea>
     <label>아바타 이미지 업로드</label>
     <input type="file" id="pfAvatarFile" accept="image/*">
-    <div class="row"><button class="plainBtn" onclick="closeMini('profileOverlay')">cancel</button>
-    <button class="plainBtn" id="pfSaveBtn">save</button></div>
+    <div class="row"><button class="plainBtn" onclick="closeMini('profileOverlay')">❌</button>
+    <button class="plainBtn" id="pfSaveBtn">✅</button></div>
   </div>
 </div>
 
@@ -281,8 +281,8 @@
     <h3 id="linkFormTitle">링크 추가</h3>
     <label>이름</label><input type="text" id="linkLabelInput">
     <label>URL</label><input type="text" id="linkUrlInput" placeholder="https://...">
-    <div class="row"><button class="plainBtn" onclick="closeMini('linkFormOverlay')">cancel</button>
-    <button class="plainBtn" id="linkSaveBtn">save</button></div>
+    <div class="row"><button class="plainBtn" onclick="closeMini('linkFormOverlay')">❌</button>
+    <button class="plainBtn" id="linkSaveBtn">✅</button></div>
   </div>
 </div>
 
@@ -294,8 +294,8 @@
     <label style="margin-top:12px;">새 유튜브 링크 또는 영상ID</label>
     <input type="text" id="newVideoUrl" placeholder="https://youtu.be/xxxxxxxx">
     <label>이름 (선택)</label><input type="text" id="newVideoLabel">
-    <div class="row"><button class="plainBtn" onclick="closeMini('videoManageOverlay')">x</button>
-    <button class="plainBtn" id="addVideoBtn">add</button></div>
+    <div class="row"><button class="plainBtn" onclick="closeMini('videoManageOverlay')">❌</button>
+    <button class="plainBtn" id="addVideoBtn">✅</button></div>
   </div>
 </div>
 
@@ -822,8 +822,8 @@ document.getElementById("adminGear").addEventListener("click", async ()=>{
       <p style="font-size:11px;color:#777;">관리자 Password와 NSFW 열람 Password를 한 번만 설정하세요.</p>
       <label>관리자 Password</label><input type="password" id="setupAdminPw">
       <label>NSFW Password</label><input type="password" id="setupNsfwPw">
-      <div class="row"><button class="plainBtn" onclick="closeMini('adminOverlay')">cancel</button>
-      <button class="plainBtn" id="setupSaveBtn">save</button></div>`;
+      <div class="row"><button class="plainBtn" onclick="closeMini('adminOverlay')">❌</button>
+      <button class="plainBtn" id="setupSaveBtn">✅</button></div>`;
     openMini("adminOverlay");
     document.getElementById("setupSaveBtn").onclick = async ()=>{
       const a = document.getElementById("setupAdminPw").value;
@@ -839,8 +839,8 @@ document.getElementById("adminGear").addEventListener("click", async ()=>{
     box.innerHTML = `
       <h3>ADMIN</h3>
       <input type="password" id="loginAdminPw" placeholder="Password">
-      <div class="row"><button class="plainBtn" onclick="closeMini('adminOverlay')">cancel</button>
-      <button class="plainBtn" id="loginSaveBtn">login</button></div>`;
+      <div class="row"><button class="plainBtn" onclick="closeMini('adminOverlay')">❌</button>
+      <button class="plainBtn" id="loginSaveBtn">✅</button></div>`;
     openMini("adminOverlay");
     document.getElementById("loginSaveBtn").onclick = async ()=>{
       const pw = document.getElementById("loginAdminPw").value;
