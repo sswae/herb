@@ -399,6 +399,28 @@ function extractYoutubeId(input){
   return null;
 }
 
+/* ============================================================
+   로컬 캐시 (localStorage) — Firestore 읽기 횟수를 줄이기 위함
+   불특정 다수가 방문하는 사이트이므로, 실시간 리스너(onSnapshot) 대신
+   "일정 시간 동안은 캐시를 쓰고, 만료되면 딱 한 번만 다시 읽기" 방식을 사용한다.
+   관리자가 직접 수정한 내용은 onSnapshot 없이도 로컬 상태 + 캐시를
+   그 자리에서 즉시 갱신해서 화면에 바로 반영한다.
+============================================================ */
+const SETTINGS_CACHE_TTL = 10 * 60 * 1000; // 10분
+const GALLERY_CACHE_TTL  = 10 * 60 * 1000; // 10분
+function getCache(key, ttl){
+  try{
+    const raw = localStorage.getItem(key);
+    if(!raw) return null;
+    const obj = JSON.parse(raw);
+    if(!obj || (Date.now() - obj.ts) > ttl) return null;
+    return obj.data;
+  }catch(e){ return null; }
+}
+function setCache(key, data){
+  try{ localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); }catch(e){}
+}
+
 /* ---------- 우클릭 메뉴 (공용) ---------- */
 const ctxMenuEl = document.getElementById("ctxMenu");
 function showCtxMenu(x, y, items){
@@ -419,13 +441,37 @@ document.addEventListener("click", ()=>{ ctxMenuEl.style.display="none"; });
    설정 실시간 로드 (프로필/링크/배너/음악)
 ============================================================ */
 let lastTickerId = null;
-db.collection(COL_SETTINGS).doc("config").onSnapshot((doc)=>{
-  if(doc.exists){ settings = { ...DEFAULTS, ...doc.data() }; }
+const SETTINGS_CACHE_KEY = "aca_settings_cache_v1";
+
+async function loadSettings(){
+  const cached = getCache(SETTINGS_CACHE_KEY, SETTINGS_CACHE_TTL);
+  if(cached){
+    settings = { ...DEFAULTS, ...cached };
+  }else{
+    const doc = await db.collection(COL_SETTINGS).doc("config").get();
+    if(doc.exists){
+      settings = { ...DEFAULTS, ...doc.data() };
+      setCache(SETTINGS_CACHE_KEY, doc.data());
+    }
+  }
   renderProfile();
   renderLinks();
   renderBanners();
   refreshTicker();
-});
+}
+loadSettings();
+
+// 관리자가 설정을 바꿀 때 쓰는 헬퍼: Firestore에 쓰고, 다시 읽어오지 않고
+// 방금 쓴 값으로 로컬 상태/캐시/화면을 그 자리에서 갱신한다 (읽기 0회).
+async function patchSettings(patch){
+  await db.collection(COL_SETTINGS).doc("config").set(patch, { merge:true });
+  settings = { ...settings, ...patch };
+  setCache(SETTINGS_CACHE_KEY, settings);
+  renderProfile();
+  renderLinks();
+  renderBanners();
+  refreshTicker();
+}
 
 function renderProfile(){
   document.getElementById("siteName").textContent = settings.siteName;
@@ -483,14 +529,14 @@ document.getElementById("linkSaveBtn").onclick = async ()=>{
   const links = [...(settings.links||[])];
   if(editingLinkIndex>=0) links[editingLinkIndex] = { label, url };
   else links.push({ label, url });
-  await db.collection(COL_SETTINGS).doc("config").set({ links }, { merge:true });
+  await patchSettings({ links });
   closeMini("linkFormOverlay");
 };
 async function deleteLink(idx){
   if(!confirm("이 링크를 삭제할까요?")) return;
   const links = [...(settings.links||[])];
   links.splice(idx,1);
-  await db.collection(COL_SETTINGS).doc("config").set({ links }, { merge:true });
+  await patchSettings({ links });
 }
 
 /* ---------- 배너 (00s 스타일, 클릭기능 없음) ---------- */
@@ -534,7 +580,7 @@ async function uploadBanner(file){
     await storage.ref(path).put(blob);
     const url = await storage.ref(path).getDownloadURL();
     const banners = [...(settings.banners||[]), { url, path }];
-    await db.collection(COL_SETTINGS).doc("config").set({ banners }, { merge:true });
+    await patchSettings({ banners });
   }catch(e){ alert("배너 업로드 실패: "+e.message); }
 }
 async function deleteBanner(idx){
@@ -542,7 +588,7 @@ async function deleteBanner(idx){
   const b = settings.banners[idx];
   const banners = [...settings.banners];
   banners.splice(idx,1);
-  await db.collection(COL_SETTINGS).doc("config").set({ banners }, { merge:true });
+  await patchSettings({ banners });
   if(b && b.path){ storage.ref(b.path).delete().catch(()=>{}); }
 }
 
@@ -559,7 +605,7 @@ document.getElementById("pfSaveBtn").onclick = async ()=>{
   const siteName = document.getElementById("pfSiteName").value.trim();
   const tagline = document.getElementById("pfTagline").value.trim();
   const bio = document.getElementById("pfBio").value.trim();
-  await db.collection(COL_SETTINGS).doc("config").set({ siteName, tagline, bio }, { merge:true });
+  await patchSettings({ siteName, tagline, bio });
   closeMini("profileOverlay");
 };
 document.getElementById("pfAvatarFile").addEventListener("change", async (e)=>{
@@ -572,7 +618,7 @@ document.getElementById("pfAvatarFile").addEventListener("change", async (e)=>{
     const path = `${STORAGE_PREFIX}/avatar_${stamp}.webp`;
     await storage.ref(path).put(blob);
     const url = await storage.ref(path).getDownloadURL();
-    await db.collection(COL_SETTINGS).doc("config").set({ avatarUrl:url }, { merge:true });
+    await patchSettings({ avatarUrl:url });
   }catch(err){ alert("아바타 업로드 실패: "+err.message); }
 });
 
@@ -581,12 +627,52 @@ document.getElementById("pfAvatarFile").addEventListener("change", async (e)=>{
 ============================================================ */
 let ytPlayer = null;
 let ytApiReady = false;
+let ytQueue = []; // 다음에 재생할 곡들의 랜덤 순서 (id 목록)
 window.onYouTubeIframeAPIReady = function(){ ytApiReady = true; maybeCreatePlayer(); };
 (function(){
   const tag = document.createElement("script");
   tag.src = "https://www.youtube.com/iframe_api";
   document.head.appendChild(tag);
 })();
+
+function shuffleArray(arr){
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+// 재생목록을 랜덤 순서로 새로 채운다. (곡이 2개 이상이면 방금 곡이 바로 다시 나오지 않도록 함)
+function refillQueue(excludeId){
+  const ids = (settings.videos||[]).map(v=>v.id);
+  if(ids.length===0){ ytQueue = []; return; }
+  let shuffled = shuffleArray(ids);
+  if(shuffled.length>1 && excludeId){
+    let guard = 0;
+    while(shuffled[0]===excludeId && guard<10){ shuffled = shuffleArray(ids); guard++; }
+  }
+  ytQueue = shuffled;
+}
+async function updateTickerText(vid){
+  const textEl = document.getElementById("yt-marquee-text");
+  try{
+    const r = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${vid}&format=json`);
+    const d = await r.json();
+    textEl.textContent = "♪ " + d.title + "   ";
+  }catch(e){ textEl.textContent = "♪ now playing   "; }
+}
+// 현재 곡이 끝났을 때 (또는 곡을 넘길 때) 대기열에서 다음 곡을 골라 이어서 재생한다.
+function playNextRandomSong(){
+  if(!(settings.videos||[]).length) return;
+  if(ytQueue.length===0) refillQueue(settings.currentVideoId);
+  const nextId = ytQueue.shift();
+  if(!nextId) return;
+  settings.currentVideoId = nextId; // Firestore에는 쓰지 않고 이 브라우저에서만 진행
+  lastTickerId = nextId;
+  if(ytPlayer && ytPlayer.loadVideoById){ ytPlayer.loadVideoById(nextId); }
+  updateTickerText(nextId);
+}
 
 function maybeCreatePlayer(){
   if(!ytApiReady || ytPlayer) return;
@@ -600,6 +686,9 @@ function maybeCreatePlayer(){
       onStateChange: (e)=>{
         const btn = document.getElementById("ytToggle");
         btn.textContent = (e.data === YT.PlayerState.PLAYING) ? "⏸" : "▶";
+        if(e.data === YT.PlayerState.ENDED){
+          playNextRandomSong();
+        }
       }
     }
   });
@@ -610,7 +699,7 @@ document.getElementById("ytToggle").onclick = ()=>{
   if(state === 1){ ytPlayer.pauseVideo(); } else { ytPlayer.playVideo(); }
 };
 
-async function refreshTicker(){
+function refreshTicker(){
   const vid = settings.currentVideoId;
   const textEl = document.getElementById("yt-marquee-text");
   if(!vid){ textEl.textContent = "재생목록이 비어있습니다 (관리자: 티커 우클릭)"; return; }
@@ -618,11 +707,7 @@ async function refreshTicker(){
     lastTickerId = vid;
     if(ytPlayer && ytPlayer.cueVideoById){ ytPlayer.cueVideoById(vid); }
     else { maybeCreatePlayer(); }
-    try{
-      const r = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${vid}&format=json`);
-      const d = await r.json();
-      textEl.textContent = "♪ " + d.title + "   ";
-    }catch(e){ textEl.textContent = "♪ now playing   "; }
+    updateTickerText(vid);
   }
 }
 
@@ -644,14 +729,22 @@ function renderVideoList(){
     label.textContent = (v.label || v.id) + (v.id === settings.currentVideoId ? " ▶현재재생" : "");
     const playBtn = document.createElement("button");
     playBtn.className = "plainBtn"; playBtn.textContent = "재생";
-    playBtn.onclick = async ()=>{ await db.collection(COL_SETTINGS).doc("config").set({ currentVideoId:v.id }, { merge:true }); renderVideoList(); };
+    playBtn.onclick = async ()=>{
+      await patchSettings({ currentVideoId:v.id });
+      ytQueue = []; // 지금 고른 곡부터 다시 랜덤 재생목록을 구성
+      lastTickerId = v.id;
+      if(ytPlayer && ytPlayer.loadVideoById){ ytPlayer.loadVideoById(v.id); } else { maybeCreatePlayer(); }
+      updateTickerText(v.id);
+      renderVideoList();
+    };
     const delBtn = document.createElement("button");
     delBtn.className = "plainBtn"; delBtn.textContent = "삭제";
     delBtn.onclick = async ()=>{
       const videos = [...settings.videos]; videos.splice(idx,1);
       const patch = { videos };
       if(v.id === settings.currentVideoId) patch.currentVideoId = (videos[0] && videos[0].id) || "";
-      await db.collection(COL_SETTINGS).doc("config").set(patch, { merge:true });
+      await patchSettings(patch);
+      ytQueue = []; // 목록이 바뀌었으니 다음 곡 뽑을 때 새로 섞기
       renderVideoList();
     };
     row.appendChild(label); row.appendChild(playBtn); row.appendChild(delBtn);
@@ -666,7 +759,8 @@ document.getElementById("addVideoBtn").onclick = async ()=>{
   const videos = [...(settings.videos||[]), { id, label }];
   const patch = { videos };
   if(!settings.currentVideoId) patch.currentVideoId = id;
-  await db.collection(COL_SETTINGS).doc("config").set(patch, { merge:true });
+  await patchSettings(patch);
+  ytQueue = []; // 새 곡이 랜덤 재생목록에 반영되도록 다시 섞기
   document.getElementById("newVideoUrl").value = "";
   document.getElementById("newVideoLabel").value = "";
   renderVideoList();
@@ -676,19 +770,30 @@ document.getElementById("addVideoBtn").onclick = async ()=>{
    방문자 카운터
 ============================================================ */
 async function runCounter(){
+  const today = new Date().toISOString().slice(0,10);
+  const VISIT_DAY_KEY = "aca_visited_day";
+  const VISIT_COUNT_KEY = "aca_visit_count_cache";
+  // 같은 브라우저가 오늘 이미 카운트됐다면, 새로고침/재방문해도 Firestore를 다시 부르지 않고
+  // 마지막으로 받아온 숫자를 그대로 보여준다.
+  if(localStorage.getItem(VISIT_DAY_KEY) === today){
+    document.getElementById("visitCount").textContent = localStorage.getItem(VISIT_COUNT_KEY) || "-";
+    return;
+  }
   try{
     const ipRes = await fetch("https://api.ipify.org?format=json");
     const { ip } = await ipRes.json();
-    const today = new Date().toISOString().slice(0,10);
     const ref = db.collection(COL_VISITS).doc(today);
+    let finalCount = 0;
     await db.runTransaction(async (tx)=>{
       const snap = await tx.get(ref);
       let ips = snap.exists ? (snap.data().ips||[]) : [];
       if(!ips.includes(ip)) ips.push(ip);
+      finalCount = ips.length;
       tx.set(ref, { ips }, { merge:true });
     });
-    const snap2 = await ref.get();
-    document.getElementById("visitCount").textContent = (snap2.data().ips||[]).length;
+    document.getElementById("visitCount").textContent = finalCount;
+    localStorage.setItem(VISIT_DAY_KEY, today);
+    localStorage.setItem(VISIT_COUNT_KEY, String(finalCount));
   }catch(e){ document.getElementById("visitCount").textContent = "?"; }
 }
 
@@ -726,7 +831,7 @@ document.getElementById("adminGear").addEventListener("click", async ()=>{
       if(!a || !n){ alert("두 Password 모두 입력하세요"); return; }
       const adminHash = await sha256(a);
       const nsfwHash = await sha256(n);
-      await db.collection(COL_SETTINGS).doc("config").set({ ...DEFAULTS, adminHash, nsfwHash }, { merge:true });
+      await patchSettings({ ...DEFAULTS, adminHash, nsfwHash });
       alert("설정 완료! 톱니바퀴를 다시 눌러 로그인하세요.");
       closeMini("adminOverlay");
     };
@@ -820,6 +925,10 @@ document.getElementById("editSaveBtn").onclick = async ()=>{
   const newTitle = document.getElementById("editTitleInput").value;
   const newNsfw = document.getElementById("editNsfwCheck").checked;
   await db.collection(COL_GALLERY).doc(ctxTargetDocId).update({ title:newTitle, nsfw:newNsfw });
+  const item = currentGalleryData.find(it=>it.id===ctxTargetDocId);
+  if(item){ item.title = newTitle; item.nsfw = newNsfw; }
+  patchGalleryCache();
+  renderGallery();
   closeMini("editOverlay");
 };
 async function deleteGalleryItem(){
@@ -830,17 +939,43 @@ async function deleteGalleryItem(){
     if(item.thumbPath) await storage.ref(item.thumbPath).delete().catch(()=>{});
     if(item.fullPath) await storage.ref(item.fullPath).delete().catch(()=>{});
     await db.collection(COL_GALLERY).doc(ctxTargetDocId).delete();
+    currentGalleryData = currentGalleryData.filter(it=>it.id!==ctxTargetDocId);
+    patchGalleryCache();
+    renderGallery();
   }catch(e){ alert("삭제 중 오류: "+e.message); }
 }
 
-db.collection(COL_GALLERY).orderBy("createdAt","desc").onSnapshot((snap)=>{
-  currentGalleryData = snap.docs.map(d=>{
-    const data = d.data();
-    if(!jitterCache[d.id]) jitterCache[d.id] = randomJitter();
-    return { id:d.id, ...data, _jitter: jitterCache[d.id] };
+const GALLERY_CACHE_KEY = "aca_gallery_cache_v1";
+function attachJitter(list){
+  return list.map(item=>{
+    if(!jitterCache[item.id]) jitterCache[item.id] = randomJitter();
+    return { ...item, _jitter: jitterCache[item.id] };
   });
+}
+async function loadGallery(){
+  const cached = getCache(GALLERY_CACHE_KEY, GALLERY_CACHE_TTL);
+  if(cached){
+    currentGalleryData = attachJitter(cached);
+    renderGallery();
+    return;
+  }
+  const snap = await db.collection(COL_GALLERY).orderBy("createdAt","desc").get();
+  const data = snap.docs.map(d=>{
+    const raw = d.data();
+    // createdAt(Timestamp)은 캐시에 그대로 저장할 수 없으니 ms 숫자로 바꿔둔다.
+    const createdAt = raw.createdAt && raw.createdAt.toMillis ? raw.createdAt.toMillis() : (raw.createdAt || Date.now());
+    return { id:d.id, ...raw, createdAt };
+  });
+  setCache(GALLERY_CACHE_KEY, data);
+  currentGalleryData = attachJitter(data);
   renderGallery();
-});
+}
+loadGallery();
+// 관리자가 갤러리를 수정했을 때, Firestore를 다시 읽지 않고
+// 방금 바뀐 내용으로 로컬 상태 + 캐시를 그 자리에서 갱신한다 (읽기 0회).
+function patchGalleryCache(){
+  setCache(GALLERY_CACHE_KEY, currentGalleryData.map(({_jitter, ...rest})=>rest));
+}
 
 /* ---------- 모달 뷰어 ---------- */
 function visibleList(){ return currentGalleryData.filter(it => !(it.nsfw && !nsfwUnlocked)); }
@@ -931,11 +1066,16 @@ async function uploadOneFile(file, nsfw){
     await storage.ref(fullPath).put(fullBlob);
     const thumbURL = await storage.ref(thumbPath).getDownloadURL();
     const fullURL = await storage.ref(fullPath).getDownloadURL();
-    await db.collection(COL_GALLERY).add({
+    const newItem = {
       thumbURL, fullURL, thumbPath, fullPath,
       title: randomJPText(), titleStyle: randomTitleStyle(), boxStyle: randomBoxStyle(),
       nsfw: nsfw, createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    };
+    const docRef = await db.collection(COL_GALLERY).add(newItem);
+    // 서버 타임스탬프가 채워지길 기다리지 않고, 방금 올린 항목을 목록 맨 앞에 바로 추가한다.
+    currentGalleryData.unshift({ id:docRef.id, ...newItem, createdAt: Date.now() });
+    patchGalleryCache();
+    renderGallery();
   }catch(e){ alert("업로드 실패: "+e.message); }
 }
 
