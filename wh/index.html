@@ -499,7 +499,7 @@ function renderLinks(){
     span.addEventListener("contextmenu",(e)=>{
       if(!isAdmin) return;
       e.preventDefault();
-      showCtxMenu(e.pageX, e.pageY, [
+      showCtxMenu(e.clientX, e.clientY, [
         { label:"✎ 수정", onClick:()=>openLinkForm(idx) },
         { label:"🗑 삭제", onClick:()=>deleteLink(idx) }
       ]);
@@ -552,7 +552,7 @@ function renderBanners(){
     img.addEventListener("contextmenu",(e)=>{
       if(!isAdmin) return;
       e.preventDefault();
-      showCtxMenu(e.pageX, e.pageY, [
+      showCtxMenu(e.clientX, e.clientY, [
         { label:"🗑 삭제", onClick:()=>deleteBanner(idx) }
       ]);
     });
@@ -898,9 +898,10 @@ function renderGallery(){
   const container = document.getElementById("gallery");
   container.innerHTML = "";
   currentGalleryData.forEach((item)=>{
-    const jitter = item._jitter;
+    const jitter = item._jitter || (item._jitter = randomJitter());
     const div = document.createElement("div");
     div.className = "g-item" + (item.nsfw && !nsfwUnlocked ? " nsfw-locked" : "");
+    div.dataset.docId = item.id;
     div.style.width = jitter.width;
     div.style.transform = `rotate(${jitter.rotate}deg)`;
     div.style.marginTop = jitter.marginTop + "px";
@@ -934,7 +935,7 @@ function renderGallery(){
       if(!isAdmin) return;
       e.preventDefault();
       ctxTargetDocId = item.id;
-      showCtxMenu(e.pageX, e.pageY, [
+      showCtxMenu(e.clientX, e.clientY, [
         { label:"✎ 수정", onClick:openEditForGallery },
         { label:"🗑 삭제", onClick:deleteGalleryItem }
       ]);
